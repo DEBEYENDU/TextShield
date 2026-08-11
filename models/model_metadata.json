@@ -1,0 +1,108 @@
+{
+  "algorithm": "Linear SVM",
+  "model_file": "C:\\Users\\GOD KAKAROT\\TextShield\\models\\spam_classifier.joblib",
+  "vectorizer_file": "C:\\Users\\GOD KAKAROT\\TextShield\\models\\tfidf_vectorizer.joblib",
+  "trained_at": "2026-08-10T14:34:24.333278+00:00",
+  "dataset": {
+    "train_rows": 211,
+    "test_rows": 53
+  },
+  "label_mapping": {
+    "ham": 0,
+    "spam": 1
+  },
+  "classes": [
+    "ham",
+    "spam"
+  ],
+  "tfidf": {
+    "ngram_range": [
+      1,
+      2
+    ],
+    "min_df": 2,
+    "max_df": 0.95,
+    "sublinear_tf": true
+  },
+  "selected_model": "Linear SVM",
+  "metrics": {
+    "accuracy": 0.9623,
+    "precision_spam": 0.9375,
+    "recall_spam": 0.9375,
+    "f1_spam": 0.9375,
+    "f1_weighted": 0.9623,
+    "confusion_matrix": [
+      [
+        36,
+        1
+      ],
+      [
+        1,
+        15
+      ]
+    ],
+    "training_seconds": 0.03
+  },
+  "comparison": {
+    "Multinomial Naive Bayes": {
+      "metrics": {
+        "accuracy": 0.9434,
+        "precision_spam": 1.0,
+        "recall_spam": 0.8125,
+        "f1_spam": 0.8966,
+        "f1_weighted": 0.9416,
+        "confusion_matrix": [
+          [
+            37,
+            0
+          ],
+          [
+            3,
+            13
+          ]
+        ],
+        "training_seconds": 0.01
+      }
+    },
+    "Logistic Regression": {
+      "metrics": {
+        "accuracy": 0.8491,
+        "precision_spam": 1.0,
+        "recall_spam": 0.5,
+        "f1_spam": 0.6667,
+        "f1_weighted": 0.8313,
+        "confusion_matrix": [
+          [
+            37,
+            0
+          ],
+          [
+            8,
+            8
+          ]
+        ],
+        "training_seconds": 0.02
+      }
+    },
+    "Linear SVM": {
+      "metrics": {
+        "accuracy": 0.9623,
+        "precision_spam": 0.9375,
+        "recall_spam": 0.9375,
+        "f1_spam": 0.9375,
+        "f1_weighted": 0.9623,
+        "confusion_matrix": [
+          [
+            36,
+            1
+          ],
+          [
+            1,
+            15
+          ]
+        ],
+        "training_seconds": 0.03
+      }
+    }
+  }
+}

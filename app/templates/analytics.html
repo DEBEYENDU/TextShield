@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+    <h1>Analytics <span class="accent">Dashboard</span></h1>
+    <p>Aggregate statistics computed from stored analysis history.</p>
+</div>
+
+<div class="stat-grid" id="stat-grid">
+    <div class="stat-card"><div class="stat-value stat-blue" id="stat-total">-</div><div class="stat-label">Total analyzed</div></div>
+    <div class="stat-card"><div class="stat-value stat-red" id="stat-spam">-</div><div class="stat-label">Spam</div></div>
+    <div class="stat-card"><div class="stat-value stat-green" id="stat-ham">-</div><div class="stat-label">Ham</div></div>
+    <div class="stat-card"><div class="stat-value stat-blue" id="stat-pct">-</div><div class="stat-label">Spam percentage</div></div>
+</div>
+
+<div class="grid grid-2">
+    <div class="card">
+        <h2>Risk distribution</h2>
+        <canvas id="chart-risk" class="chart"></canvas>
+        <div class="legend" id="legend-risk"></div>
+    </div>
+    <div class="card">
+        <h2>Message type distribution</h2>
+        <canvas id="chart-type" class="chart"></canvas>
+        <div class="legend" id="legend-type"></div>
+    </div>
+    <div class="card">
+        <h2>Analyses per day (last 14)</h2>
+        <canvas id="chart-daily" class="chart"></canvas>
+    </div>
+    <div class="card">
+        <h2>Totals</h2>
+        <table class="data">
+            <tbody>
+                <tr><td>Average model confidence</td><td class="num" id="avg-conf">-</td></tr>
+                <tr><td>Latest analysis</td><td class="num" id="latest-at">-</td></tr>
+                <tr><td>Spam / Ham ratio</td><td class="num" id="ratio">-</td></tr>
+                <tr><td>Model in use</td><td class="num" id="model-name">-</td></tr>
+                <tr><td>Model F1 (spam)</td><td class="num" id="model-f1">-</td></tr>
+                <tr><td>Model accuracy</td><td class="num" id="model-acc">-</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/analytics.js"></script>
+{% endblock %}

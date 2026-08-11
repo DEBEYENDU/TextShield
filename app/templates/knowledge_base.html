@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+    <h1>Knowledge <span class="accent">Base</span></h1>
+    <p>RAG knowledge corpus &mdash; scam patterns, phishing, examples and safety guidelines used as retrieval evidence.</p>
+</div>
+
+<div id="kb-status" class="card">
+    <div class="spinner"></div> Loading status...
+</div>
+
+<div class="card mt">
+    <h2>Rebuild vector database</h2>
+    <p class="muted">Re-reads all documents under <span class="mono">knowledge_base/</span>, re-chunks and re-embeds them. The rebuild is safe and only touches files inside the project.</p>
+    <button class="btn mt" id="rebuild-btn" type="button">Rebuild knowledge base</button>
+    <div id="rebuild-result" class="mt"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/kb.js"></script>
+{% endblock %}

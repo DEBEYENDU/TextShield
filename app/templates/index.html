@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+    <h1>Message <span class="accent">Analysis</span></h1>
+    <p>Paste a message, SMS or email and get an explainable spam/ham verdict with RAG evidence.</p>
+</div>
+
+<div class="card">
+    <div class="tabs" role="tablist">
+        <button class="tab-btn active" data-tab="sms" role="tab">SMS</button>
+        <button class="tab-btn" data-tab="text" role="tab">TEXT</button>
+        <button class="tab-btn" data-tab="email" role="tab">EMAIL</button>
+    </div>
+
+    <form id="analyze-form">
+        <div class="tab-panel active" data-panel="sms">
+            <div class="field">
+                <label for="sms-message">Message</label>
+                <textarea id="sms-message" maxlength="10000" placeholder="e.g. Congratulations! You have won Rs.50,000. Click here to claim." required></textarea>
+            </div>
+        </div>
+        <div class="tab-panel" data-panel="text">
+            <div class="field">
+                <label for="text-message">Message</label>
+                <textarea id="text-message" maxlength="10000" placeholder="Paste any text message..." required></textarea>
+            </div>
+        </div>
+        <div class="tab-panel" data-panel="email">
+            <div class="field-row">
+                <div class="field">
+                    <label for="email-subject">Subject</label>
+                    <input id="email-subject" maxlength="500" placeholder="Your account requires verification">
+                </div>
+                <div class="field">
+                    <label for="email-sender">Sender</label>
+                    <input id="email-sender" maxlength="500" placeholder="support@secure-update-xyz.net">
+                </div>
+            </div>
+            <div class="field">
+                <label for="email-body">Body</label>
+                <textarea id="email-body" maxlength="10000" placeholder="Email body..." required></textarea>
+            </div>
+            <div class="field">
+                <label for="email-raw">Or paste a complete raw email (optional)</label>
+                <textarea id="email-raw" maxlength="20000" placeholder="From: ...&#10;Subject: ...&#10;Date: ...&#10;&#10;Body..."></textarea>
+            </div>
+        </div>
+
+        <button type="submit" class="btn" id="analyze-btn">Analyze Message</button>
+    </form>
+</div>
+
+<div id="result-area" class="mt hidden"></div>
+<div id="error-area" class="mt hidden"></div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/index.js"></script>
+{% endblock %}

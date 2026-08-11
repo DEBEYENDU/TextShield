@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+    <h1>About <span class="accent">TextShield</span></h1>
+    <p>{{ tagline }}</p>
+</div>
+
+<div class="card">
+    <h2>Project</h2>
+    <p>
+        TextShield is an academic engineering project that detects SPAM and HAM across SMS, text and email,
+        and explains every verdict using a three-layer architecture:
+    </p>
+    <ul class="check-list mt">
+        <li><span class="check-mark">&#9654;</span> <span><b>ML classifier</b> (TF-IDF &rarr; Linear SVM) is the primary decision maker.</span></li>
+        <li><span class="check-mark">&#9654;</span> <span><b>RAG system</b> retrieves relevant evidence from a local knowledge base via semantic search (ChromaDB + sentence-transformers).</span></li>
+        <li><span class="check-mark">&#9654;</span> <span><b>LLM layer</b> (Ollama / OpenAI-compatible, optional) writes the human-readable explanation; a deterministic template takes over when no LLM is configured.</span></li>
+    </ul>
+    <p class="muted mt">
+        The ML model never depends on the LLM or RAG: the application still returns SPAM/HAM, confidence
+        and indicators when the advanced services are offline.
+    </p>
+</div>
+
+<div class="card mt" id="model-card">
+    <h2>Trained model</h2>
+    <div id="model-body"><div class="spinner"></div> Loading model info...</div>
+</div>
+
+<div class="card mt">
+    <h2>Scope &amp; limitations</h2>
+    <ul class="check-list">
+        <li><span class="check-mark">&#9432;</span> <span>All analyses are <b>informational</b> and based on static pattern analysis. TextShield is not legal, financial or security assurance.</span></li>
+        <li><span class="check-mark">&#9432;</span> <span>URL analysis is purely structural (no network requests); a clean URL is not a guarantee of safety.</span></li>
+        <li><span class="check-mark">&#9432;</span> <span>Accuracy depends on the training dataset. The bundled sample dataset is small; adding the UCI SMS Spam Collection greatly improves the model.</span></li>
+    </ul>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/about.js"></script>
+{% endblock %}

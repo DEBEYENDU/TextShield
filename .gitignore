@@ -1,0 +1,30 @@
+# Environment / secrets
+.env
+.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.coverage
+
+# TextShield artifacts
+models/*.joblib
+models/*.pkl
+vector_db/*
+!vector_db/.gitkeep
+textshield.db
+logs/*.log
+
+# Dataset caches
+data/processed/*
+!data/processed/.gitkeep
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
