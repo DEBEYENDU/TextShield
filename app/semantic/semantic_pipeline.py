@@ -649,6 +649,8 @@ class SemanticPipeline:
             embeddings=embeddings,
             semantic_features=features,
             confidence=confidence,
+            sentences=sentences,
             embedding_provider=self.embeddings.provider,
+            normalized_text=normalized or full_text,
             message_preview=(normalized or full_text)[:80],
         )

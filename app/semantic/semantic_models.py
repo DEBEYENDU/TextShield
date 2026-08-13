@@ -125,6 +125,12 @@ class SemanticAnalysisResult(BaseModel):
     )
     semantic_features: SemanticFeatures
     confidence: SemanticConfidence
+    sentences: list[str] = Field(
+        default_factory=list, description="Sentence segmentation of the message"
+    )
     embedding_provider: str = Field(default="")
     engine_version: str = Field(default="1.0.0")
+    normalized_text: str = Field(
+        default="", description="Canonically normalized full text (reused by later engines)"
+    )
     message_preview: str = Field(default="", description="Truncated, safe preview for logs")

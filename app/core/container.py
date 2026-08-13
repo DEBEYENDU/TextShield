@@ -21,6 +21,7 @@ _REQUIRED_SERVICES = (
     "models",
     "system_status",
     "semantic",
+    "intent",
 )
 
 
@@ -54,6 +55,7 @@ def create_container(registry: ServiceRegistry | None = None) -> ServiceRegistry
     """
     registry = registry or ServiceRegistry()
 
+    from app.intent.pipeline import intent_pipeline
     from app.semantic.semantic_service import semantic_service
     from app.services import (
         analysis_service,
@@ -74,6 +76,7 @@ def create_container(registry: ServiceRegistry | None = None) -> ServiceRegistry
         "models": models_service,
         "system_status": system_status_service,
         "semantic": semantic_service,
+        "intent": intent_pipeline,
     }
     for name, provider in defaults.items():
         if name not in registry:

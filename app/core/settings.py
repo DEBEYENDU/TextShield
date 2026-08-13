@@ -94,6 +94,20 @@ class Settings:
         "SEMANTIC_LANGUAGE_DETECTION", "auto"
     ).lower()
 
+    # Intent & Behavior Analysis Engine (Phase 6).
+    # Deterministic, configurable thresholds. No classification.
+    INTENT_ENABLED: bool = _get_bool("INTENT_ENABLED", True)
+    INTENT_CONFIDENCE_THRESHOLD: float = _get_float(
+        "INTENT_CONFIDENCE_THRESHOLD", 0.35
+    )
+    INTENT_BEHAVIOR_THRESHOLD: float = _get_float(
+        "INTENT_BEHAVIOR_THRESHOLD", 0.30
+    )
+    INTENT_URGENCY_THRESHOLD: float = _get_float(
+        "INTENT_URGENCY_THRESHOLD", 0.30
+    )
+    INTENT_MAX_INTENTS: int = _get_int("INTENT_MAX_INTENTS", 4)
+
     LLM_PROVIDER: str = _get("LLM_PROVIDER", "ollama").lower()
     LLM_MODEL: str = _get("LLM_MODEL", "")
     LLM_BASE_URL: str = _get("LLM_BASE_URL", "http://localhost:11434")

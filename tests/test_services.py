@@ -32,6 +32,7 @@ class TestContainer:
         registry.register("models", stub)
         registry.register("system_status", stub)
         registry.register("semantic", stub)
+        registry.register("intent", stub)
         assert verify_container(registry) == []
 
 
