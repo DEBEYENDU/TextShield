@@ -20,6 +20,7 @@ _REQUIRED_SERVICES = (
     "kb",
     "models",
     "system_status",
+    "semantic",
 )
 
 
@@ -53,6 +54,7 @@ def create_container(registry: ServiceRegistry | None = None) -> ServiceRegistry
     """
     registry = registry or ServiceRegistry()
 
+    from app.semantic.semantic_service import semantic_service
     from app.services import (
         analysis_service,
         analytics_service,
@@ -71,6 +73,7 @@ def create_container(registry: ServiceRegistry | None = None) -> ServiceRegistry
         "kb": kb_service,
         "models": models_service,
         "system_status": system_status_service,
+        "semantic": semantic_service,
     }
     for name, provider in defaults.items():
         if name not in registry:

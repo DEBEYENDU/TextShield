@@ -80,6 +80,20 @@ class Settings:
     EMBEDDING_PROVIDER: str = _get("EMBEDDING_PROVIDER", "sentence_transformers")
     EMBEDDING_MODEL: str = _get("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 
+    # Semantic Understanding Engine (Phase 5).
+    # Independent of RAG/LLM: its own embedder and caches.
+    SEMANTIC_ENABLED: bool = _get_bool("SEMANTIC_ENABLED", True)
+    SEMANTIC_EMBEDDING_MODEL: str = _get(
+        "SEMANTIC_EMBEDDING_MODEL", "all-MiniLM-L6-v2"
+    )
+    SEMANTIC_EMBEDDING_DIMENSION: int = _get_int("SEMANTIC_EMBEDDING_DIMENSION", 384)
+    SEMANTIC_CACHE_SIZE: int = _get_int("SEMANTIC_CACHE_SIZE", 512)
+    SEMANTIC_BATCH_SIZE: int = _get_int("SEMANTIC_BATCH_SIZE", 16)
+    SEMANTIC_DEVICE: str = _get("SEMANTIC_DEVICE", "auto").lower()
+    SEMANTIC_LANGUAGE_DETECTION: str = _get(
+        "SEMANTIC_LANGUAGE_DETECTION", "auto"
+    ).lower()
+
     LLM_PROVIDER: str = _get("LLM_PROVIDER", "ollama").lower()
     LLM_MODEL: str = _get("LLM_MODEL", "")
     LLM_BASE_URL: str = _get("LLM_BASE_URL", "http://localhost:11434")
