@@ -16,19 +16,7 @@
     let offset = 0;
     let total = 0;
 
-    function escapeHtml(value) {
-        return String(value ?? "")
-            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-    }
-
-    function formatTime(iso) {
-        try {
-            return new Date(iso).toLocaleString();
-        } catch {
-            return iso;
-        }
-    }
+    const { escapeHtml, formatTime } = window.textshield;
 
     function shortHash(hash) {
         return hash ? hash.slice(0, 10) + "&hellip;" : "-";

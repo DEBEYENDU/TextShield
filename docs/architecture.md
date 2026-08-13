@@ -20,15 +20,16 @@ through the analysis pipeline, and the responsibilities of each module.
 Browser (dashboard)
       │  HTTP / JSON
       ▼
-FastAPI application (app/main.py)
- ├── /api/analyze ......... routes_analysis
- ├── /api/history ......... routes_history
- ├── /api/stats ........... routes_stats
- ├── /api/model-info ...... routes_stats
- ├── /api/health .......... routes_health
- ├── /api/knowledge-base .. routes_health
- └── pages / • • /about ... Jinja2 + static
-      │
+FastAPI application (app/main.py — create_app factory)
+ ├── /api/analyze .......... routes_analysis
+ ├── /api/history .......... routes_history
+ ├── /api/stats ............ routes_stats
+ ├── /api/model-info ....... routes_stats
+ ├── /api/health, /api/readiness, /api/version,
+ │   /api/config/status, /api/status ... routes_system
+ ├── /api/knowledge-base (+ /rebuild) .. routes_knowledge
+ └── pages / • /about ... Jinja2 + static
+      │  (request-id & logging middleware; global error handlers)
       ├── services/analysis_service.py   (orchestrator)
       │     ├── ml/classifier.py         (joblib model + TF-IDF)
       │     ├── ml/indicators.py         (rule engine)
@@ -37,7 +38,7 @@ FastAPI application (app/main.py)
       │     ├── services/risk_engine.py  (score → LOW/MEDIUM/HIGH/CRITICAL/UNCERTAIN)
       │     ├── rag/retriever.py         (embed + search)
       │     └── rag/generator.py         (LLM or template explainer)
-      ├── database/ (SQLite)             (history + stats)
+      ├── database/ (migrations + repositories, SQLite)
       └── rag/llm.py                     (provider abstraction)
 ```
 
@@ -72,8 +73,14 @@ Response JSON + SQLite history insert (hash of content, not content)
 
 | Module | Responsibility | Failure behavior |
 |---|---|---|
-| `core/config.py` | Environment settings, path resolution | n/a |
-| `ml/preprocess.py` | Cleaning + placeholder masking for URLs/emails/phones/money | n/a |
+| `core/settings.py` | Typed settings from env/.env; path resolution | n/a |
+| `core/constants.py` | Shared constants (risk levels, intents, defaults) | n/a |
+| `core/features.py` | Feature flags (rag/llm/history/evidence/analytics) | disabled stage skips |
+| `core/container.py` | Service registry (DI); routes depend on registry | startup error if missing |
+| `core/exceptions.py` | Typed error hierarchy → HTTP mapping | global handlers |
+| `core/errors.py` | Centralized exception handlers (consistent envelope) | always responds JSON |
+| `api/middleware.py` | Request-id + request logging | never blocks requests |
+| `ml/preprocess.py` | Unicode normalization + cleaning + placeholders | n/a |
 | `ml/features.py` | TF-IDF vectorizer builder | n/a |
 | `ml/classifier.py` | Loads joblib model; `predict()` → label + probability | `RuntimeError` → 503 via service |
 | `ml/indicators.py` | 15+ regex/lexical rule groups; structured evidence | never fails |
@@ -86,9 +93,17 @@ Response JSON + SQLite history insert (hash of content, not content)
 | `rag/llm.py` | ollama / openai / nvidia clients; env-only keys | `None` → template mode |
 | `services/risk_engine.py` | 0–100 score with explicit factors | never fails |
 | `services/analysis_service.py` | Orchestrates pipeline; history insert | history failure never breaks analysis |
-| `database/database.py` | SQLite schema + queries (hash-based privacy) | isolated |
-| `schemas/analysis.py` | Pydantic validation, length limits | 422 on invalid input |
-| `api/*` | HTTP layer, error mapping | 404/422/500/503 |
+| `services/history_service.py` | History list/filter/delete/clear (paged) | isolated |
+| `services/analytics_service.py` | Dashboard statistics | isolated |
+| `services/configuration_service.py` | Effective config + feature-flag snapshot | n/a |
+| `services/models_service.py` | Model availability + metadata | returns `available: False` |
+| `services/system_status_service.py` | Health/readiness/uptime/status | degraded response |
+| `services/kb_service.py` | Knowledge-base status and rebuild | `KnowledgeBaseError` → 500 envelope |
+| `database/migrations.py` | Versioned schema changes (append-only) | applied in order, transactional |
+| `database/base.py` | Connections + migration runner + `init_db` | locked, rollback on error |
+| `database/repositories/*` | Per-aggregate SQL access (history, analytics, kb_metadata, settings, logs) | isolated |
+| `schemas/*` | Pydantic validation, length limits | 422 on invalid input |
+| `api/*` | Thin HTTP layer via service registry | 404/422/500/503 envelopes |
 
 ## 5. Failure handling matrix
 

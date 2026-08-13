@@ -7,8 +7,9 @@ Interactive docs: `GET /docs` (Swagger UI).
 
 - Request/response bodies are JSON.
 - Validation failures return **422**; missing model **503**; auth not used.
+- Errors share one envelope: `{"error": {"code", "message", "detail"}}`.
 - All endpoints are validated through Pydantic schemas in
-  `app/schemas/analysis.py`.
+  `app/schemas/{analysis,history,analytics,system}.py`.
 
 ---
 
@@ -51,8 +52,14 @@ Analyze a message. `input_type` is `sms` | `text` | `email`.
 {
   "classification": "SPAM",
   "confidence": 0.988,
+  "risk_score": 74.0,
   "risk_level": "HIGH",
   "message_type": "sms",
+  "intent": {
+    "label": "prize_scam",
+    "description": "...",
+    "evidence": ["you have won"]
+  },
   "indicators": [
     {"indicator": "Prize / lottery claim", "severity": "high",
      "category": "prize", "evidence": "you have won"}
@@ -102,10 +109,11 @@ Query parameters:
 |---|---|---|
 | `input_type` | `sms` `text` `email` | none |
 | `classification` | `SPAM` `HAM` | none |
-| `risk_level` | `LOW` `MEDIUM` `HIGH` | none |
+| `risk_level` | `LOW` `MEDIUM` `HIGH` `CRITICAL` `UNCERTAIN` | none |
+| `intent` | intent label (e.g. `prize_scam`) | none |
 | `limit` | 1–200 | 50 |
 | `offset` | ≥0 | 0 |
-| `order_by` | `timestamp` `id` `classification` `risk_level` `confidence` `input_type` | `timestamp` |
+| `order_by` | `timestamp` `id` `classification` `risk_level` `confidence` | `timestamp` |
 | `direction` | `asc` `desc` | `desc` |
 
 ```json
@@ -115,7 +123,7 @@ Query parameters:
      "input_type": "sms",
      "message_hash": "9f86d081884c7d659a2feaa0c55ad015...",
      "classification": "SPAM", "confidence": 0.988,
-     "risk_level": "HIGH", "preview": null}
+     "risk_level": "HIGH", "intent": "prize_scam", "preview": null}
   ],
   "total": 7, "limit": 50, "offset": 0
 }
@@ -142,8 +150,9 @@ Clears all history. `200 {"deleted": true, "rows_deleted": 7}`.
   "ham_count": 25,
   "spam_percentage": 40.5,
   "average_confidence": 0.93,
-  "risk_distribution": {"LOW": 25, "MEDIUM": 9, "HIGH": 8},
+  "risk_distribution": {"LOW": 25, "MEDIUM": 9, "HIGH": 8, "CRITICAL": 0, "UNCERTAIN": 0},
   "message_type_distribution": {"sms": 30, "text": 8, "email": 4},
+  "intent_distribution": {"prize_scam": 5, "credential_request": 3},
   "analyses_per_day": [{"date": "2026-08-09", "count": 3}],
   "latest_analysis_at": "2026-08-10T12:00:00+00:00"
 }
@@ -193,6 +202,47 @@ Clears all history. `200 {"deleted": true, "rows_deleted": 7}`.
 
 `status` is `"degraded"` when the ML model is missing (the analyze endpoint
 will then return 503).
+
+---
+
+## GET /api/readiness
+
+Liveness/readiness probe for orchestration:
+
+```json
+{"ready": true, "components": {"database": true, "migrations": true}, "message": "ready"}
+```
+
+## GET /api/version
+
+```json
+{"name": "TextShield", "version": "1.0.0",
+ "tagline": "AI-powered phishing, spam and scam message analysis",
+ "environment": "development"}
+```
+
+## GET /api/config/status
+
+Effective runtime configuration snapshot:
+
+```json
+{"environment": "development", "model_path": "...", "vector_db_path": "...",
+ "embedding_provider": "sentence_transformers", "llm_provider": "ollama",
+ "llm_model": "llama3.1:8b", "rag_enabled": true, "llm_enabled": false,
+ "history_enabled": true, "history_store_preview": false,
+ "max_message_length": 10000}
+```
+
+## GET /api/status
+
+Application status snapshot:
+
+```json
+{"status": "running", "version": "1.0.0", "uptime_seconds": 12.5,
+ "feature_flags": {"rag": true, "llm": false, "history": true,
+                   "evidence": true, "analytics": true},
+ "model_ready": true, "rag_ready": true, "llm_available": false}
+```
 
 ---
 

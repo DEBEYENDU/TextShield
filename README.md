@@ -73,16 +73,21 @@ Generation (RAG) pipeline for evidence, and an LLM for explanation.
   retrieval returns actual source documents with relevance scores.
 - **LLM abstraction** — `ollama`, `openai`, `nvidia` providers via environment
   variables; template-based fallback when no LLM is available.
-- **Transparent risk engine** — LOW / MEDIUM / HIGH with an explicit list of
-  contributing factors.
-- **History in SQLite** — message content stored as SHA-256 only by default;
-  filtering, sorting, pagination, delete.
+- **Transparent risk engine** — LOW / MEDIUM / HIGH / CRITICAL / UNCERTAIN
+  with an explicit list of contributing factors.
+- **Intent detection** — 8-class sender intent extraction (credential request,
+  money request, download, personal data, prize, confirmation, engagement,
+  other) feeding the risk decision.
+- **History in SQLite** — message content stored as SHA-256 only by default
+  (plus intent and risk score per row); filtering, sorting, pagination,
+  delete; schema versioned via migrations.
 - **Analytics dashboard** — totals, spam %, risk and type distributions,
   per-day trend; dependency-free canvas charts.
 - **Model info page** — algorithm, training date, dataset sizes, metrics and
   the full three-model comparison.
-- **Automated tests** — 73 tests covering preprocessing, classification,
-  indicators, URLs, risk, RAG and the API.
+- **Automated tests** — 157 tests covering preprocessing, classification,
+  indicators, URLs, risk, RAG, settings, repositories, services, lifecycle
+  and the API.
 - **Logging** — rotating file + console; never logs keys or message content.
 
 ---
@@ -107,7 +112,7 @@ ML classifier              │
 Prediction + confidence     │
         ├───────────────────┤
         ▼                   ▼
-   Risk engine (LOW/MEDIUM/HIGH + factors)
+   Risk engine (LOW/MEDIUM/HIGH/CRITICAL/UNCERTAIN + factors)
         │
         ▼
 RAG retrieval ──────────► ChromaDB / fallback store (persistent)
@@ -149,18 +154,29 @@ Clear separation of concerns:
 ```
 TextShield/
 ├── app/
-│   ├── main.py                  # FastAPI app + page routes
-│   ├── api/                     # REST routers
+│   ├── main.py                  # FastAPI app factory (create_app) + page routes
+│   ├── api/                     # REST routers (thin; logic lives in services)
 │   │   ├── routes_analysis.py   #   POST /api/analyze
 │   │   ├── routes_history.py    #   history list/delete/clear
 │   │   ├── routes_stats.py      #   stats + model-info
-│   │   └── routes_health.py     #   health + knowledge-base status/rebuild
-│   ├── core/                    # config (.env) + logging
+│   │   ├── routes_system.py     #   health/readiness/version/config/status
+│   │   ├── routes_knowledge.py  #   knowledge-base status/rebuild
+│   │   └── middleware.py        #   request-id + request logging
+│   ├── core/                    # settings (env), constants, feature flags,
+│   │   │                        # exceptions, error handlers, DI container
+│   │   ├── settings.py          #   typed settings from env/.env
+│   │   ├── constants.py         #   shared constants
+│   │   ├── features.py          #   feature flags
+│   │   ├── container.py         #   service registry (dependency injection)
+│   │   ├── exceptions.py        #   typed error hierarchy
+│   │   ├── errors.py            #   global exception handlers (JSON envelope)
+│   │   └── logging.py           #   structured logging + request-id filter
 │   ├── ml/
-│   │   ├── preprocess.py        # cleaning, placeholders, extraction
+│   │   ├── preprocess.py        # cleaning, unicode normalization, placeholders
 │   │   ├── features.py          # TF-IDF builder
 │   │   ├── classifier.py        # trained model wrapper (SPAM/HAM + proba)
 │   │   ├── indicators.py        # rule-based indicator engine
+│   │   ├── intent.py            # sender intent detection
 │   │   ├── url_analyzer.py      # static URL pattern analysis
 │   │   └── input_detection.py   # raw-mail parsing / type detection
 │   ├── rag/
@@ -169,15 +185,20 @@ TextShield/
 │   │   ├── retriever.py         # embed + search + status
 │   │   ├── llm.py               # provider abstraction (ollama/openai/nvidia)
 │   │   └── generator.py         # explanation + recommendation generation
-│   ├── database/                # SQLite schema + queries
-│   ├── schemas/                 # Pydantic request/response models
-│   ├── services/
-│   │   ├── analysis_service.py  # pipeline orchestration
-│   │   └── risk_engine.py       # transparent risk scoring
+│   ├── database/                # migrations + repositories + V1 facade
+│   │   ├── base.py              #   connections + migration runner
+│   │   ├── migrations.py        #   versioned schema migrations
+│   │   └── repositories/        #   history/analytics/kb/settings/logs access
+│   ├── schemas/                 # Pydantic models (analysis/history/analytics/system)
+│   ├── services/                # business logic (analysis, history, analytics,
+│   │   │                        # configuration, models, system status, KB)
+│   │   ├── analysis_service.py  #   pipeline orchestration
+│   │   └── risk_engine.py       #   transparent risk scoring
+│   ├── utils/                   # file/text/date/validation/response helpers
 │   └── templates/               # Jinja2 pages
 ├── static/
 │   ├── css/style.css
-│   ├── js/                      # page logic + canvas charts
+│   ├── js/                      # common.js (shared helpers) + page logic
 │   └── images/
 ├── data/
 │   ├── raw/                     # CSV datasets (sample included)
@@ -191,9 +212,8 @@ TextShield/
 │   ├── train_model.py
 │   ├── evaluate_model.py
 │   └── build_knowledge_base.py
-├── tests/                       # pytest suite (73 tests)
-├── docs/                        # architecture, ml_pipeline, rag_pipeline,
-│                                # api, setup
+├── tests/                       # pytest suite (157 tests)
+├── docs/                        # PRD, architecture, migration plan, api, ...
 ├── .env.example
 ├── requirements.txt
 ├── pytest.ini
@@ -307,6 +327,10 @@ Interactive docs (Swagger UI) at **http://127.0.0.1:8000/docs**.
 | GET | `/api/stats` | Analytics aggregates |
 | GET | `/api/model-info` | Model metadata + metrics + comparison |
 | GET | `/api/health` | Service health (model/RAG/LLM) |
+| GET | `/api/readiness` | Readiness probe (DB + migrations) |
+| GET | `/api/version` | Name / version / environment |
+| GET | `/api/config/status` | Effective runtime configuration |
+| GET | `/api/status` | App status: uptime, feature flags, readiness |
 | GET | `/api/knowledge-base` | RAG build status |
 | POST | `/api/knowledge-base/rebuild` | Rebuild vector DB from `knowledge_base/` |
 
@@ -424,8 +448,9 @@ SPAM          1     15
 python -m pytest
 ```
 
-73 tests covering: preprocessing, spam/ham prediction, indicator detection,
-URL analysis, risk calculation, RAG retrieval and all API endpoints.
+157 tests covering: preprocessing, spam/ham prediction, indicator detection,
+URL analysis, risk calculation, RAG retrieval, settings, repositories,
+services, lifecycle and all API endpoints.
 
 ## 20. Documentation
 

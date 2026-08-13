@@ -15,7 +15,7 @@ Pipeline (as executed here):
 
 Failure policy: if RAG or LLM are unavailable the analysis still
 completes with basic classification, confidence and indicators.
-A missing ML model raises ``ClassifierUnavailableError`` (HTTP 503).
+A missing ML model raises ``ServiceUnavailableError`` (HTTP 503).
 """
 from __future__ import annotations
 
@@ -24,6 +24,7 @@ import time
 from datetime import datetime, timezone
 
 from app.core.config import settings
+from app.core.exceptions import ServiceUnavailableError
 from app.core.logging import get_logger
 from app.database import database as db
 from app.ml.classifier import SpamClassifier, classifier
@@ -38,10 +39,6 @@ from app.schemas.analysis import AnalyzeRequest, AnalysisResult
 from app.services.risk_engine import compute_risk
 
 logger = get_logger(__name__)
-
-
-class ClassifierUnavailableError(RuntimeError):
-    """Raised when the ML model files are missing."""
 
 
 def _hash_message(text: str) -> str:
@@ -119,7 +116,7 @@ def analyze(request: AnalyzeRequest, store_history: bool = True) -> dict:
         prediction = classifier.predict(combined_text)
     except RuntimeError as exc:
         logger.error("Classifier error: %s", exc)
-        raise ClassifierUnavailableError(
+        raise ServiceUnavailableError(
             "ML model not available. Run `python scripts/train_model.py` first."
         ) from exc
 
@@ -194,8 +191,16 @@ def analyze(request: AnalyzeRequest, store_history: bool = True) -> dict:
     # ------------------------------------------------------------- history
     if store_history:
         try:
-            _store_history(request, combined_text, prediction.label,
-                           prediction.probability, risk["level"])
+            _store_history(
+                request,
+                combined_text,
+                prediction.label,
+                prediction.probability,
+                risk["level"],
+                risk["score"],
+                intent,
+                effective_type,
+            )
         except Exception as exc:  # history must never break analysis
             logger.error("Failed to persist history: %s", exc)
 
@@ -211,7 +216,7 @@ def analyze(request: AnalyzeRequest, store_history: bool = True) -> dict:
 
 def _store_history(
     request: AnalyzeRequest, combined_text: str, label: str, confidence: float,
-    risk_level: str,
+    risk_level: str, risk_score: float, intent: dict, effective_type: str,
 ) -> int:
     """Persist a history row. Message content is hashed, not stored, by default."""
     preview = None
@@ -220,11 +225,14 @@ def _store_history(
         preview = cleaned[: settings.HISTORY_PREVIEW_LENGTH]
     record = {
         "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "input_type": request.input_type,
+        "input_type": effective_type,
         "message_hash": _hash_message(combined_text),
         "classification": label,
         "confidence": confidence,
         "risk_level": risk_level,
+        "risk_score": risk_score,
+        "intent": intent.get("intent") if isinstance(intent, dict) else None,
+        "message_type": effective_type,
         "preview": preview,
     }
     return db.insert_analysis(record)

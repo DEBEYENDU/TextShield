@@ -131,6 +131,61 @@ def tokenize(text: str, remove_stopwords: bool = False) -> list[str]:
     return tokens
 
 
+# ------------------------------------------------------ V2.0 pipeline pieces
+_SMART_CHARS = {
+    "\u201c": '"', "\u201d": '"', "\u2018": "'", "\u2019": "'",
+    "\u2013": "-", "\u2014": "-", "\u00a0": " ", "\u200b": "",
+}
+
+
+def normalize_unicode(text: str) -> str:
+    """Normalize to NFC and fold smart quotes/dashes to ASCII forms.
+
+    Conservative: normalizes a small, safe set of confusables only —
+    the classifier must not lose meaningful characters.
+    """
+    import unicodedata
+
+    text = unicodedata.normalize("NFC", text or "")
+    return "".join(_SMART_CHARS.get(ch, ch) for ch in text)
+
+
+def detect_language(text: str) -> str:
+    """Language detection placeholder (heuristic script sniffing).
+
+    PLACEHOLDER: returns a coarse label ("latin", "devanagari", ...) via
+    Unicode block checks. Replace with a real language detector when a
+    model-backed pipeline is introduced.
+    """
+    scripts: dict[str, int] = {}
+    for ch in text or "":
+        code = ord(ch)
+        if 0x0041 <= code <= 0x024F or 0x00C0 <= code <= 0x017F:
+            script = "latin"
+        elif 0x0900 <= code <= 0x097F:
+            script = "devanagari"
+        elif 0x0600 <= code <= 0x06FF:
+            script = "arabic"
+        elif 0x4E00 <= code <= 0x9FFF:
+            script = "cjk"
+        elif 0x0400 <= code <= 0x04FF:
+            script = "cyrillic"
+        else:
+            continue
+        scripts[script] = scripts.get(script, 0) + 1
+    if not scripts:
+        return "unknown"
+    return max(scripts, key=scripts.get)
+
+
+def preprocess_message(text: str, mask_sensitive: bool = True) -> str:
+    """Full preprocessing pipeline entry point (V2.0).
+
+    unicode normalization -> placeholders -> cleaning -> whitespace fold.
+    """
+    return normalize_text(normalize_unicode(text), mask_sensitive=mask_sensitive)
+
+
 # ----------------------------------------------------------- manual features
 def basic_feature_counts(text: str) -> dict[str, int | float]:
     """Lightweight manual features complementary to TF-IDF.

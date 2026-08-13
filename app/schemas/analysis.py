@@ -1,4 +1,4 @@
-"""Pydantic models for the TextShield REST API.
+"""Pydantic models: analysis contract (request + response).
 
 All user input is validated here: type constraints, length limits and
 content-presence rules. Requests failing validation produce HTTP 422.
@@ -9,7 +9,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-from app.core.config import settings
+from app.core.constants import EXPLANATION_SOURCE_TEMPLATE
+from app.core.settings import settings
 
 _MAX_LEN = settings.MAX_MESSAGE_LENGTH
 
@@ -55,7 +56,7 @@ class AnalysisResult(BaseModel):
     urls: list[dict] = Field(default_factory=list)
     rag_evidence: list[dict] = Field(default_factory=list)
     explanation: str
-    explanation_source: Literal["llm", "template"]
+    explanation_source: Literal["llm", EXPLANATION_SOURCE_TEMPLATE]
     recommended_action: str
     risk_factors: list[str] = Field(default_factory=list)
     model_used: str
@@ -64,72 +65,3 @@ class AnalysisResult(BaseModel):
         "This analysis is informational and reflects static pattern analysis. "
         "It is not legal, financial or security assurance."
     )
-
-
-class HistoryEntry(BaseModel):
-    id: int
-    timestamp: str
-    input_type: str
-    message_hash: str
-    classification: str
-    confidence: float
-    risk_level: str
-    preview: str | None = None
-
-
-class HistoryResponse(BaseModel):
-    items: list[HistoryEntry]
-    total: int
-    limit: int
-    offset: int
-
-
-class StatsResponse(BaseModel):
-    total_analyses: int
-    spam_count: int
-    ham_count: int
-    spam_percentage: float
-    average_confidence: float
-    risk_distribution: dict
-    message_type_distribution: dict
-    analyses_per_day: list[dict]
-    latest_analysis_at: str | None
-
-
-class ModelInfoResponse(BaseModel):
-    available: bool
-    algorithm: str | None = None
-    trained_at: str | None = None
-    dataset: dict | None = None
-    label_mapping: dict | None = None
-    metrics: dict | None = None
-    comparison: dict | None = None
-    message: str | None = None
-
-
-class HealthResponse(BaseModel):
-    status: str
-    version: str
-    model_ready: bool
-    rag_ready: bool
-    vector_db_backend: str
-    embedding_provider: str
-    llm_provider: str
-    llm_model: str
-    llm_available: bool
-    history_rows: int
-
-
-class KBStatusResponse(BaseModel):
-    ready: bool
-    backend: str
-    embedding_provider: str
-    chunk_count: int
-    document_count: int
-    categories: list[str]
-    built_at: str | None = None
-
-
-class KBStatusDetail(KBStatusResponse):
-    rebuild_ok: bool = False
-    rebuild_message: str = ""

@@ -6,9 +6,7 @@
                      spam: "#ef4444", ham: "#22c55e", blue: "#3b82f6",
                      sms: "#22d3ee", text: "#3b82f6", email: "#8b5cf6" };
 
-    function escapeHtml(value) {
-        return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    }
+    const { escapeHtml } = window.textshield;
 
     function drawBars(canvas, labels, values, colors) {
         const ctx = canvas.getContext("2d");
