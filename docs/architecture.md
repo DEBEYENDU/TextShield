@@ -32,8 +32,9 @@ FastAPI application (app/main.py)
       ├── services/analysis_service.py   (orchestrator)
       │     ├── ml/classifier.py         (joblib model + TF-IDF)
       │     ├── ml/indicators.py         (rule engine)
+      │     ├── ml/intent.py             (sender intent extraction)
       │     ├── ml/url_analyzer.py       (static URL checks)
-      │     ├── services/risk_engine.py  (score → LOW/MEDIUM/HIGH)
+      │     ├── services/risk_engine.py  (score → LOW/MEDIUM/HIGH/CRITICAL/UNCERTAIN)
       │     ├── rag/retriever.py         (embed + search)
       │     └── rag/generator.py         (LLM or template explainer)
       ├── database/ (SQLite)             (history + stats)
@@ -51,11 +52,14 @@ normalize + combine subject/sender/body
 [parallel branches]
    ├── ML path : normalize_text → TF-IDF transform → predict_proba → SPAM/HAM + p
    ├── Rules   : detect_indicators(raw text)   → [{indicator, severity, evidence}]
+   ├── Intent  : detect_intent(raw text)       → {label, description, evidence}
    ├── URLs    : analyze_urls(raw text)        → [{url, warnings, flags}]
    └── (email) : analyze_domain(sender domain) → merged into urls/indicators
    ▼
-Risk engine: base score by class → indicator weights → URL flags
+Risk engine: base score by class → indicator weights → intent signal → URL flags
              → confidence adjustment → RAG family bonus → level
+             (CRITICAL requires malicious intent + corroboration; UNCERTAIN
+              when the model is guessing with no supporting evidence)
    ▼
 RAG: embed(message) → query vector store → top-k hits (source/category/score)
    ▼
@@ -73,6 +77,7 @@ Response JSON + SQLite history insert (hash of content, not content)
 | `ml/features.py` | TF-IDF vectorizer builder | n/a |
 | `ml/classifier.py` | Loads joblib model; `predict()` → label + probability | `RuntimeError` → 503 via service |
 | `ml/indicators.py` | 15+ regex/lexical rule groups; structured evidence | never fails |
+| `ml/intent.py` | 8-class sender intent extraction (credential/money/download/personal/prize/confirmation/engagement/other) | never fails |
 | `ml/url_analyzer.py` | Static URL pattern analysis; cautious wording | never fails; no network |
 | `rag/embeddings.py` | sentence-transformers or hashing provider | falls back to hashing |
 | `rag/vector_store.py` | ChromaDB or numpy store; persistent on disk | falls back to simple store |

@@ -151,6 +151,8 @@ body {
 .risk-HIGH { color: var(--red); }
 .risk-MEDIUM { color: var(--amber); }
 .risk-LOW { color: var(--green); }
+.risk-CRITICAL { color: #f97316; }
+.risk-UNCERTAIN { color: var(--text-muted); }
 
 .badge {
     display: inline-block; padding: 0.18rem 0.6rem; border-radius: 999px;

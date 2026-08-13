@@ -1,13 +1,26 @@
-"""Risk engine.
+"""Risk engine (V2.0).
 
-Risk is scored on a 0-100 scale and mapped to LOW / MEDIUM / HIGH.
+Risk is scored on a 0-100 scale and mapped to one of five levels:
+
+    LOW / MEDIUM / HIGH / CRITICAL / UNCERTAIN
 
 Inputs (all transparent and logged as ``risk_factors``):
 
 * ML classification + confidence
 * detected indicators (severity-weighted)
+* sender intent (credential/money/download requests raise the ceiling)
 * URL pattern warnings
 * RAG evidence pointing at high-risk knowledge categories
+
+Rules (per PRD section 20):
+
+* CRITICAL requires a malicious-intent signal *and* strong corroboration
+  (high-confidence SPAM verdict plus high-severity indicators or risky
+  URLs) - it is never granted on weak evidence.
+* UNCERTAIN is reserved for irreconcilable evidence: the model is
+  guessing (confidence below the uncertain threshold) and no strong
+  corroborating signal exists either way. It never masquerades as a
+  confident verdict.
 
 Weights are defined in ``app/core/config.py`` so the logic is
 configurable. Informational only - not legal, financial or security
@@ -16,6 +29,7 @@ authority.
 from __future__ import annotations
 
 from app.core.config import settings
+from app.ml.intent import is_malicious_intent
 
 
 def _clamp(value: float) -> float:
@@ -39,6 +53,7 @@ def compute_risk(
     indicators: list[dict],
     urls: list[dict],
     rag_evidence: list[dict],
+    intent: dict | None = None,
 ) -> dict:
     """Compute the risk level and the factors that produced it."""
     factors: list[str] = []
@@ -49,6 +64,13 @@ def compute_risk(
         f"ML classified the message as {classification} "
         f"(confidence {confidence * 100:.0f}%)"
     )
+
+    # sender intent (engineered requests raise the risk ceiling)
+    intent_label = (intent or {}).get("label", "other")
+    intent_malicious = is_malicious_intent(intent_label)
+    if intent_malicious:
+        score += settings.RISK_INTENT_MALICIOUS
+        factors.append(f"Sender intent is a {intent_label} request")
 
     # indicator weights
     for indicator in indicators:
@@ -97,5 +119,39 @@ def compute_risk(
     level = _level(score)
     if classification == "SPAM" and level == "LOW":
         level = "MEDIUM"
+
+    # CRITICAL: malicious intent + strong corroboration (RZ-03). A high raw
+    # score alone can never reach CRITICAL - the intent signal is mandatory.
+    critical_intents = {"credential_request", "money_transfer", "download_install"}
+    has_high_indicator = any(
+        i.get("severity") == "high" for i in indicators
+    )
+    has_flagged_url = any(u.get("warnings") for u in urls)
+    if (
+        classification == "SPAM"
+        and intent_label in critical_intents
+        and confidence >= settings.RISK_CRITICAL_CONFIDENCE
+        and score >= settings.RISK_CRITICAL_THRESHOLD
+        and (has_high_indicator or has_flagged_url)
+    ):
+        level = "CRITICAL"
+        factors.append(
+            "CRITICAL: credential/money/download intent with high-confidence SPAM "
+            "verdict and corroborating high-severity signals"
+        )
+
+    # UNCERTAIN: model is guessing and no evidence points either way (RZ-04)
+    if (
+        confidence < settings.RISK_UNCERTAIN_CONFIDENCE
+        and level == "LOW"
+        and not intent_malicious
+        and not indicators
+        and not has_flagged_url
+    ):
+        level = "UNCERTAIN"
+        factors.append(
+            "UNCERTAIN: model confidence is too low to trust and no strong "
+            "corroborating indicator exists in either direction"
+        )
 
     return {"score": round(score, 1), "level": level, "factors": factors}

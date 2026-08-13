@@ -29,6 +29,7 @@ from app.database import database as db
 from app.ml.classifier import SpamClassifier, classifier
 from app.ml import indicators as indicator_engine
 from app.ml import url_analyzer
+from app.ml import intent as intent_engine
 from app.ml.input_detection import looks_like_raw_email, parse_raw_email
 from app.ml.preprocess import normalize_text
 from app.rag.generator import generate_explanation
@@ -145,12 +146,15 @@ def analyze(request: AnalyzeRequest, store_history: bool = True) -> dict:
                 }
             )
 
+    intent = intent_engine.detect_intent(full_text)
+
     rag_evidence = retriever.retrieve(combined_text) if retriever.is_ready else []
     if not retriever.is_ready:
         logger.info("RAG not ready - continuing without knowledge evidence")
 
     risk = compute_risk(
-        prediction.label, prediction.probability, indicators, urls, rag_evidence
+        prediction.label, prediction.probability, indicators, urls, rag_evidence,
+        intent=intent,
     )
 
     mention_subject = " (subject: " + subject_text + ")" if subject_text else ""
@@ -163,7 +167,8 @@ def analyze(request: AnalyzeRequest, store_history: bool = True) -> dict:
             "urls": urls,
             "rag_evidence": rag_evidence,
             "risk_level": risk["level"],
-            "message_type": request.input_type,
+            "message_type": effective_type,
+            "intent": intent,
         }
     )
 
@@ -171,8 +176,10 @@ def analyze(request: AnalyzeRequest, store_history: bool = True) -> dict:
     result = {
         "classification": prediction.label,
         "confidence": prediction.probability,
+        "risk_score": risk["score"],
         "risk_level": risk["level"],
         "message_type": effective_type,
+        "intent": intent,
         "indicators": indicators,
         "urls": urls,
         "rag_evidence": rag_evidence,

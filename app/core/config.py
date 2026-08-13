@@ -83,8 +83,12 @@ class Settings:
     RISK_URL_SHORTENER: float = 4.0
     RISK_HIGH_CONF_BONUS: float = 15.0
     RISK_RAG_CATEGORY_BONUS: float = 8.0
+    RISK_INTENT_MALICIOUS: float = 12.0
     RISK_MEDIUM_THRESHOLD: float = 30.0
     RISK_HIGH_THRESHOLD: float = 60.0
+    RISK_CRITICAL_THRESHOLD: float = 80.0
+    RISK_CRITICAL_CONFIDENCE: float = 0.85
+    RISK_UNCERTAIN_CONFIDENCE: float = 0.5
 
     @property
     def database_path(self) -> Path:

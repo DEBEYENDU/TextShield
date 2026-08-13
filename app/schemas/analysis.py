@@ -47,8 +47,10 @@ class AnalyzeRequest(BaseModel):
 class AnalysisResult(BaseModel):
     classification: str
     confidence: float
+    risk_score: float
     risk_level: str
     message_type: str
+    intent: dict = Field(default_factory=dict)
     indicators: list[dict] = Field(default_factory=list)
     urls: list[dict] = Field(default_factory=list)
     rag_evidence: list[dict] = Field(default_factory=list)

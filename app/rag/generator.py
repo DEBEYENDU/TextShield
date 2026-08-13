@@ -55,9 +55,24 @@ RETRIEVED KNOWLEDGE (RAG evidence, may be partial):
 
 RISK LEVEL: {data.get("risk_level")}
 MESSAGE TYPE: {data.get("message_type")}
+SENDER INTENT: {_format_intent(data.get("intent"))}
 
 Respond with the JSON object only.
 """
+
+
+def _format_intent(intent: dict | None) -> str:
+    if not intent:
+        return "(unknown)"
+    label = str(intent.get("label", "other")).replace("_", " ")
+    description = intent.get("description", "")
+    evidence = intent.get("evidence", "")
+    line = f"label={label}"
+    if description:
+        line += f" ({description})"
+    if evidence:
+        line += f" evidence=\"{evidence}\""
+    return line
 
 
 def _format_indicators(indicators: list[dict]) -> str:
@@ -115,11 +130,19 @@ def template_explanation(analysis: dict) -> dict:
     indicators = analysis.get("indicators", [])
     urls = analysis.get("urls", [])
     evidence = analysis.get("rag_evidence", [])
+    intent = analysis.get("intent") or {}
 
     parts = [
         f"This message was classified as {classification} with {confidence * 100:.0f}% "
         f"confidence by the machine-learning model, and the overall risk is {risk}."
     ]
+
+    intent_label = intent.get("label")
+    if intent_label and intent_label != "other":
+        parts.append(
+            f"The sender's apparent intent is a {intent_label.replace('_', ' ')}: "
+            f"{intent.get('description')}"
+        )
 
     if classification == "SPAM":
         parts.append(
@@ -163,6 +186,14 @@ def template_explanation(analysis: dict) -> dict:
         parts.append("The message requests passwords, PINs or OTPs, which legitimate "
                      "organizations never do.")
 
+    if classification == "SPAM" and intent_label in {
+        "credential_request", "money_transfer", "download_install",
+    }:
+        parts.append(
+            "The message is engineered to make you act on a request that "
+            "legitimate organizations would never make in this format."
+        )
+
     explanation = " ".join(parts)
 
     recommendation = _recommendation(analysis)
@@ -176,6 +207,25 @@ def template_explanation(analysis: dict) -> dict:
 
 
 def _recommendation(analysis: dict) -> str:
+    if analysis.get("risk_level") == "UNCERTAIN":
+        return "The signals are too weak or contradictory for a confident verdict. " \
+               "Treat the message cautiously: verify the sender through a trusted " \
+               "official channel before acting, and re-check if you have more context."
+
+    if analysis.get("risk_level") == "CRITICAL":
+        advice = ["REPORT THIS MESSAGE: do not click links, do not reply, and do not " \
+                  "enter any details."]
+        if analysis.get("classification") == "SPAM":
+            advice.append(
+                "Contact the impersonated service through its official app or website, "
+                "and report the message to your service provider or the local CERT."
+            )
+        advice.append(
+            "If you already shared any password, PIN, OTP or card details, secure "
+            "the affected accounts and contact your bank immediately."
+        )
+        return " ".join(advice)
+
     if analysis.get("classification") == "HAM":
         if analysis.get("risk_level") == "LOW":
             return "No major spam indicators were detected. This message looks legitimate, " \

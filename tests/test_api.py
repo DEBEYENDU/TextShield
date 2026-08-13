@@ -159,6 +159,20 @@ def test_raw_email_explicit_tab(client):
     assert response.json()["message_type"] == "email"
 
 
+def test_response_includes_v2_intent_and_risk_score(client):
+    response = client.post(
+        "/api/analyze",
+        json={"input_type": "text", "message": "Enter your password and OTP to verify your account."},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert "risk_score" in body and isinstance(body["risk_score"], float)
+    assert body["intent"]["label"] == "credential_request"
+    assert body["intent"]["description"]
+    assert body["intent"]["evidence"]
+    assert body["risk_level"] in {"LOW", "MEDIUM", "HIGH", "CRITICAL", "UNCERTAIN"}
+
+
 def test_home_page_served(client):
     response = client.get("/")
     assert response.status_code == 200
