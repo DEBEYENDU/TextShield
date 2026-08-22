@@ -468,8 +468,8 @@ Detailed write-ups live in `docs/`:
 
 **TextShield** — Academic project.
 
-- Author: *(your name here)*
-- Course / Institution: *(your course & institution here)*
-- Supervisor: *(optional)*
+- Author: Debeyendu Nirmal Karmakar
+- Course / Institution: B. E (Computer Engineering)
+- Supervisor: NA
 
 Built with Python, scikit-learn, FastAPI, ChromaDB and open-source LLM tooling.
