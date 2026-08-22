@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+    <h1>Knowledge Explorer <span class="accent">Browse</span></h1>
+    <p>Explore the TextShield knowledge base categories, tags and articles.</p>
+</div>
+
+<div class="card">
+    <div class="tabs" role="tablist">
+        <button class="tab-btn active" data-tab="categories" role="tab">Categories</button>
+        <button class="tab-btn" data-tab="tags" role="tab">Tags</button>
+        <button class="tab-btn" data-tab="articles" role="tab">Articles</button>
+        <button class="tab-btn" data-tab="glossary" role="tab">Glossary</button>
+    </div>
+
+    <div class="tab-panel active" id="tab-categories">
+        <div class="search-container">
+            <input type="text" id="kb-search" placeholder="Search knowledge base...">
+        </div>
+        <div class="kb-grid" id="kb-grid">
+            <!-- Categories loaded via AJAX -->
+        </div>
+    </div>
+    
+    <div class="tab-panel" id="tab-tags">
+        <div class="search-container">
+            <input type="text" id="tag-search" placeholder="Search tags...">
+        </div>
+        <div class="tag-cloud" id="tag-cloud">
+            <!-- Tags loaded via AJAX -->
+        </div>
+    </div>
+    
+    <div class="tab-panel" id="tab-articles">
+        <div class="search-container">
+            <input type="text" id="article-search" placeholder="Search articles...">
+        </div>
+        <div class="article-list" id="article-list">
+            <!-- Articles loaded via AJAX -->
+        </div>
+    </div>
+    
+    <div class="tab-panel" id="tab-glossary">
+        <div class="search-container">
+            <input type="text" id="glossary-search" placeholder="Search glossary...">
+        </div>
+        <div class="glossary-list" id="glossary-list">
+            <!-- Glossary entries loaded via AJAX -->
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/knowledge.js"></script>
+{% endblock %}

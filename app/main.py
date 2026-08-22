@@ -56,6 +56,13 @@ def _register_page_routes(app: FastAPI, templates: Jinja2Templates) -> None:
         ("/analytics", "analytics.html"),
         ("/knowledge-base", "knowledge_base.html"),
         ("/about", "about.html"),
+        ("/dashboard", "dashboard.html"),
+        ("/analyze", "analyze.html"),
+        ("/results", "results.html"),
+        ("/evidence", "evidence.html"),
+        ("/knowledge", "knowledge.html"),
+        ("/system", "system.html"),
+        ("/settings", "settings.html"),
     ]
 
     def _page_handler(template: str):

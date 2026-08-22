@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+    <h1>Evidence Viewer <span class="accent">Retrieved Documents</span></h1>
+    <p>Knowledge base documents and similar messages supporting the analysis.</p>
+</div>
+
+<div class="card">
+    <div class="stat-grid" id="evidence-stats">
+        <div class="stat-card">
+            <div class="stat-value" id="evidence-count">0</div>
+            <div class="stat-label">Documents</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="avg-similarity">0%</div>
+            <div class="stat-label">Avg Similarity</div>
+        </div>
+    </div>
+</div>
+
+<div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+    <table class="data compact">
+        <thead>
+            <tr>
+                <th>Document</th>
+                <th>Source</th>
+                <th>Category</th>
+                <th>Trust</th>
+                <th>Similarity</th>
+                <th>Evidence</th>
+            </tr>
+        </thead>
+        <tbody id="evidence-table-body">
+            <!-- Evidence rows loaded via AJAX -->
+        </tbody>
+    </table>
+</div>
+
+<div class="mt-3">
+    <button class="btn" onclick="closeEvidenceViewer()">Close</button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/evidence.js"></script>
+{% endblock %}

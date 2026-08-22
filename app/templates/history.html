@@ -1,64 +1,40 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="page-head">
-    <h1>Analysis <span class="accent">History</span></h1>
-    <p>Previous analyses. Message content is stored as a SHA-256 hash by default &mdash; no raw text is saved.</p>
+    <h1>Analysis History <span class="accent">Previous</span></h1>
+    <p>Previous analyses with filters and search.</p>
 </div>
 
 <div class="card">
-    <div class="field-row" style="align-items:end;">
-        <div class="field">
-            <label for="f-type">Input type</label>
-            <select id="f-type">
-                <option value="">All types</option>
-                <option value="sms">SMS</option>
-                <option value="text">Text</option>
-                <option value="email">Email</option>
-            </select>
-        </div>
-        <div class="field">
-            <label for="f-class">Classification</label>
-            <select id="f-class">
-                <option value="">All</option>
-                <option value="SPAM">SPAM</option>
-                <option value="HAM">HAM</option>
-            </select>
-        </div>
-        <div class="field">
-            <label for="f-risk">Risk</label>
-            <select id="f-risk">
-                <option value="">All</option>
-                <option value="LOW">LOW</option>
-                <option value="MEDIUM">MEDIUM</option>
-                <option value="HIGH">HIGH</option>
-            </select>
-        </div>
-        <div class="field">
-            <button class="btn-ghost" id="clear-btn" type="button">Clear all history</button>
-        </div>
-    </div>
-    <div class="table-wrap">
+    <div class="table-responsive">
         <table class="data">
             <thead>
                 <tr>
-                    <th>Time</th>
-                    <th>Type</th>
+                    <th>Date</th>
+                    <th>Message Type</th>
                     <th>Classification</th>
-                    <th class="num">Confidence</th>
-                    <th>Risk</th>
-                    <th>Hash</th>
-                    <th></th>
+                    <th>Risk Level</th>
+                    <th>Confidence</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
-            <tbody id="history-body"></tbody>
+            <tbody id="history-table-body">
+                <!-- History rows loaded via AJAX -->
+            </tbody>
         </table>
     </div>
-    <div id="history-empty" class="muted mt hidden">No history entries yet. Run an analysis first.</div>
-    <div class="mt">
-        <button class="btn-ghost" id="prev-btn" type="button">&larr; Newer</button>
-        <button class="btn-ghost" id="next-btn" type="button">Older &rarr;</button>
-        <span class="muted" id="page-info" style="margin-left:1rem;"></span>
+</div>
+
+<div class="card">
+    <div class="stat-grid" id="history-stats">
+        <!-- Stats loaded via AJAX -->
     </div>
+</div>
+
+<div class="mt-3">
+    <button class="btn" onclick="exportHistory()">Export History</button>
+    <button class="btn btn-secondary" onclick="deleteSelected()">Delete Selected</button>
+    <button class="btn btn-secondary" onclick="reanalyzeSelected()">Reanalyze Selected</button>
 </div>
 {% endblock %}
 

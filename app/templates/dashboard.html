@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+    <h1>Dashboard <span class="accent">Overview</span></h1>
+    <p>TextShield AI Security Platform - Home</p>
+</div>
+
+<div class="card">
+    <div class="stat-grid" id="dashboard-stats">
+        <!-- Stats loaded via AJAX -->
+    </div>
+</div>
+
+<div class="grid grid-2" id="main-content">
+    <div class="card">
+        <h2>Risk Distribution</h2>
+        <canvas id="dashboard-risk-chart" class="chart"></canvas>
+        <div class="legend" id="dashboard-risk-legend"></div>
+    </div>
+    
+    <div class="card">
+        <h2>Message Type Distribution</h2>
+        <canvas id="dashboard-type-chart" class="chart"></canvas>
+        <div class="legend" id="dashboard-type-legend"></div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>System Health</h2>
+    <div class="grid grid-3" id="system-health">
+        <!-- Health items loaded via AJAX -->
+    </div>
+</div>
+</div>
+
+<div class="card">
+    <h2>Quick Actions</h2>
+    <div class="quick-actions" id="quick-actions">
+        <!-- Quick actions loaded via AJAX -->
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/chart-init.js"></script>
+<script src="/static/js/dashboard.js"></script>
+{% endblock %}

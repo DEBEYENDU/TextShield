@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+    <h1>System Health <span class="accent">Status</span></h1>
+    <p>System components and infrastructure status.</p>
+</div>
+
+<div class="grid grid-2" style="margin-top: 1rem; gap: 1.5rem;">
+    <div class="card">
+        <h3>Embedding Model</h3>
+        <div class="grid grid-2">
+            <div>
+                <strong>Status</strong>
+                <span class="status-dot" id="model-status"></span>
+                <span id="model-name" style="margin-left: 0.5rem;">-</span>
+            </div>
+            <div>
+                <strong>Accuracy</strong>
+                <span id="model-accuracy">-</span>
+            </div>
+        </div>
+        <div>
+            <small id="model-last-update" style="display: block; color: var(--text-secondary);">-</small>
+        </div>
+    </div>
+    
+    <div class="card">
+        <h3>LLM Provider</h3>
+        <div class="grid grid-2">
+            <div>
+                <strong>Status</strong>
+                <span class="status-dot" id="llm-status"></span>
+                <span id="llm-name" style="margin-left: 0.5rem;">-</span>
+            </div>
+            <div>
+                <strong>Model</strong>
+                <span id="llm-model">-</span>
+            </div>
+        </div>
+        <div>
+            <small id="llm-last-update" style="display: block; color: var(--text-secondary);">-</small>
+        </div>
+    </div>
+</div>
+    
+    <div class="card">
+        <h3>Vector Database</h3>
+        <div class="grid grid-2">
+            <div>
+                <strong>Status</strong>
+                <span class="status-dot" id="vector-status"></span>
+                <span id="vector-count" style="margin-left: 0.5rem;">-</span>
+            </div>
+            <div>
+                <strong>Index size</strong>
+                <span id="vector-index-size">-</span>
+            </div>
+        </div>
+        <div>
+            <small id="vector-last-update" style="display: block; color: var(--text-secondary);">-</small>
+        </div>
+    </div>
+</div>
+    
+    <div class="card">
+        <h3>Knowledge Base</h3>
+        <div class="grid grid-2">
+            <div>
+                <strong>Status</strong>
+                <span class="status-dot" id="kb-status"></span>
+                <span id="kb-count" style="margin-left: 0.5rem;">-</span>
+            </div>
+            <div>
+                <strong>Documents</strong>
+                <span id="kb-document-count">-</span>
+            </div>
+        </div>
+        <div>
+            <small id="kb-last-update" style="display: block; color: var(--text-secondary);">-</small>
+        </div>
+    </div>
+</div>
+    
+    <div class="card">
+        <h3>Database</h3>
+        <div class="grid grid-2">
+            <div>
+                <strong>Status</strong>
+                <span class="status-dot" id="db-status"></span>
+                <span id="db-type" style="margin-left: 0.5rem;">-</span>
+            </div>
+            <div>
+                <strong>Connections</strong>
+                <span id="db-connections">-</span>
+            </div>
+        </div>
+        <div>
+            <small id="db-last-update" style="display: block; color: var(--text-secondary);">-</small>
+        </div>
+    </div>
+</div>
+    
+    <div class="card">
+        <h3>API Health</h3>
+        <div class="grid grid-2">
+            <div>
+                <strong>Status</strong>
+                <span class="status-dot" id="api-status"></span>
+            </div>
+            <div>
+                <strong>Response time</strong>
+                <span id="api-response-time">-</span>
+            </div>
+        </div>
+        <small id="api-last-update" style="display: block; color: var(--text-secondary);">-</small>
+    </div>
+</div>
+    
+    <div class="card">
+        <h3>Version & Resources</h3>
+        <ul class="list-unstyled">
+            <li><strong>Application version</strong>: <span id="app-version">-</span></li>
+            <li><strong>Memory usage</strong>: <span id="memory-usage">-</span></li>
+            <li><strong>Storage size</strong>: <span id="storage-size">-</span></li>
+        </ul>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/system.js"></script>
+{% endblock %}
