@@ -1,0 +1,1368 @@
+from __future__ import annotations
+
+from typing import Dict, List, Optional, Any, Tuple
+
+from dataclasses import dataclass, field
+
+from app.decision.evidence_fusion import (
+    EvidenceFusion,
+    SignalInputs,
+    FusionResult,
+    WeightingConfig,
+    DecisionThresholds,
+)
+from app.decision.weighting import WeightingConfig as WC, DecisionThresholds as DT
+from app.decision.config import DecisionEngineConfig, PipelineConfig
+from app.decision.validators import InputValidators, PipelineValidator, ValidationResult
+from app.decision.utils import (
+    merge_dicts,
+    format_confidence_label,
+    format_risk_label,
+    generate_reasoning_summary,
+    sanitize_input,
+    TimestampedValue,
+    ProcessingMetrics,
+    DecisionLogEntry,
+)
+
+
+@dataclass
+class DecisionSignals:
+    """Decoded signals from all subsystems."""
+
+    semantic_class: str = "Unknown"
+    intent_class: str = "Unknown"
+    behavior_class: str = "Unknown"
+    retrieval_category: str = "Unknown"
+    llm_classification: str = "Unknown"
+    ml_prediction: str = "Unknown"
+    risk_factors: Dict[str, Any] = field(default_factory=dict)
+    confidence_scores: Dict[str, float] = field(default_factory=dict)
+
+
+@dataclass
+class RiskFactors:
+    """Identified risk factors from evidence analysis."""
+
+    credential_request: bool = False
+    financial_request: bool = False
+    urgent_action: bool = False
+    manipulation_detected: bool = False
+    authority_impersonation: bool = False
+    suspicious_links: bool = False
+    unknown_domain: bool = False
+    behavioral_anomalies: bool = False
+    llm_reasoning_flags: Dict[str, Any] = field(default_factory=dict)
+    ml_flags: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class Recommendation:
+    """Generated recommendation based on evidence."""
+
+    text: str
+    rationale: str
+    confidence: float
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "recommendation": self.text,
+            "rationale": self.rationale,
+            "confidence": self.confidence,
+        }
+
+
+@dataclass
+class Explanation:
+    """Full explanation of the decision."""
+
+    summary: str = ""
+    decision: str = ""
+    risk: str = ""
+    confidence: float = 0.0
+    key_evidence: List[Dict[str, Any]] = field(default_factory=list)
+    supporting_knowledge: List[Dict[str, Any]] = field(default_factory=list)
+    detected_behaviors: List[str] = field(default_factory=list)
+    detected_intents: List[str] = field(default_factory=list)
+    ml_contribution: Dict[str, Any] = field(default_factory=dict)
+    llm_contribution: Dict[str, Any] = field(default_factory=dict)
+    reasoning_summary: str = ""
+    conflicting_evidence: List[Dict[str, Any]] = field(default_factory=list)
+    limitations: List[str] = field(default_factory=list)
+    recommendations: List[Dict[str, Any]] = field(default_factory=list)
+    references: List[Dict[str, Any]] = field(default_factory=list)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "summary": self.summary,
+            "decision": self.decision,
+            "risk": self.risk,
+            "confidence": self.confidence,
+            "key_evidence": self.key_evidence,
+            "supporting_knowledge": self.supporting_knowledge,
+            "detected_behaviors": self.detected_behaviors,
+            "detected_intents": self.detected_intents,
+            "ml_contribution": self.ml_contribution,
+            "llm_contribution": self.llm_contribution,
+            "reasoning_summary": self.reasoning_summary,
+            "conflicting_evidence": self.conflicting_evidence,
+            "limitations": self.limitations,
+            "recommendations": self.recommendations,
+            "references": self.references,
+        }
+
+
+@dataclass
+class DecisionOutput:
+    """Structured decision output JSON."""
+
+    classification: str = "Unknown"
+    risk_level: str = "Low"
+    confidence: float = 0.0
+    signals: Dict[str, Any] = field(default_factory=dict)
+    evidence: List[Dict[str, Any]] = field(default_factory=list)
+    reasoning_summary: str = ""
+    recommendations: List[Dict[str, Any]] = field(default_factory=list)
+    limitations: List[str] = field(default_factory=list)
+    references: List[Dict[str, Any]] = field(default_factory=list)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "classification": self.classification,
+            "risk_level": self.risk_level,
+            "confidence": self.confidence,
+            "signals": self.signals,
+            "evidence": self.evidence,
+            "reasoning_summary": self.reasoning_summary,
+            "recommendations": self.recommendations,
+            "limitations": self.limitations,
+            "references": self.references,
+        }
+
+
+class EvidenceFusion:
+    """Combines evidence from all AI subsystems using configurable weights."""
+
+    def __init__(
+        self,
+        weighting_config: Optional[WeightingConfig] = None,
+        thresholds: Optional[DecisionThresholds] = None,
+    ):
+        from app.decision.weighting import WeightingConfig as WC
+
+        self.weighting_config = weighting_config or WC()
+        self.thresholds = thresholds or DecisionThresholds()
+        self.normalized_weights = self.weighting_config.normalize()
+
+    def normalize_signal(self, signal_name: str, signal_data: Dict[str, Any]) -> float:
+        """Normalize a signal to a 0-1 confidence score."""
+        if not signal_data:
+            return 0.0
+
+        if signal_name == "semantic":
+            return signal_data.get("confidence", 0.0)
+        elif signal_name == "intent":
+            return signal_data.get(
+                "confidence", signal_data.get("primary_intent_confidence", 0.0)
+            )
+        elif signal_name == "behavior":
+            return signal_data.get("confidence", 0.0)
+        elif signal_name == "retrieval":
+            return signal_data.get("confidence", 0.0)
+        elif signal_name == "llm":
+            return signal_data.get("confidence", 0.0)
+        elif signal_name == "ml":
+            return signal_data.get("confidence", 0.0)
+        elif signal_name == "historical":
+            return signal_data.get("consistency", 0.0)
+        elif signal_name == "entities":
+            return signal_data.get("confidence", 0.0)
+        elif signal_name == "threat":
+            return signal_data.get("confidence", 0.0)
+        else:
+            return signal_data.get("confidence", 0.0)
+
+    def compute_weighted_score(
+        self, inputs: SignalInputs, weights: Optional[WeightingConfig] = None
+    ) -> float:
+        """Compute the weighted fusion score across all signals."""
+        w = weights or self.normalized_weights
+        score = 0.0
+        total_weight = 0.0
+
+        # Semantic
+        s = self.normalize_signal("semantic", inputs.semantic)
+        score += s * w.semantic_weight
+        total_weight += w.semantic_weight
+
+        # Intent
+        i = self.normalize_signal("intent", inputs.intent)
+        score += i * w.intent_weight
+        total_weight += w.intent_weight
+
+        # Behavior
+        b = self.normalize_signal("behavior", inputs.behavior)
+        score += b * w.behavior_weight
+        total_weight += w.behavior_weight
+
+        # Retrieval
+        r = self.normalize_signal("retrieval", inputs.retrieval)
+        score += r * w.retrieval_confidence_weight
+        total_weight += w.retrieval_confidence_weight
+
+        # Knowledge trust
+        kt = inputs.retrieval.get("knowledge_trust", 0.5)
+        score += kt * w.knowledge_trust_weight
+        total_weight += w.knowledge_trust_weight
+
+        # LLM confidence
+        l = self.normalize_signal("llm", inputs.llm)
+        score += l * w.llm_confidence_weight
+        total_weight += w.llm_confidence_weight
+
+        # LLM reasoning quality
+        lr = inputs.llm.get("reasoning_quality", 0.5)
+        score += lr * w.llm_reasoning_weight
+        total_weight += w.llm_reasoning_weight
+
+        # ML probability
+        m = self.normalize_signal("ml", inputs.ml)
+        score += m * w.ml_probability_weight
+        total_weight += w.ml_probability_weight
+
+        # ML contribution
+        mc = inputs.ml.get("feature_importance_count", 0.5)
+        score += mc * w.ml_contribution_weight
+        total_weight += w.ml_contribution_weight
+
+        # Historical consistency
+        h = self.normalize_signal("historical", inputs.historical)
+        score += h * w.historical_consistency_weight
+        total_weight += w.historical_consistency_weight
+
+        # Entity confidence
+        e = self.normalize_signal("entities", inputs.entities)
+        score += e * w.entity_confidence_weight
+        total_weight += w.entity_confidence_weight
+
+        if total_weight == 0:
+            return 0.0
+
+        return score / total_weight
+
+    def classify(
+        self, weighted_score: float, thresholds: Optional[DecisionThresholds] = None
+    ) -> Tuple[str, str, float]:
+        """Classify based on weighted score and return (classification, risk_level, confidence)."""
+        t = thresholds or self.thresholds
+
+        # Determine classification
+        if weighted_score >= t.high_confidence_threshold:
+            classification = "Spam"
+            risk = "High"
+            confidence = min(weighted_score, 1.0)
+        elif weighted_score >= t.medium_confidence_threshold:
+            classification = "Suspicious"
+            risk = "Medium"
+            confidence = (weighted_score - t.medium_confidence_threshold) / (
+                t.high_confidence_threshold - t.medium_confidence_threshold
+            )
+            confidence = max(0.0, min(1.0, confidence))
+        elif weighted_score >= t.low_confidence_threshold:
+            classification = "Ham"
+            risk = "Low"
+            confidence = (weighted_score - t.low_confidence_threshold) / (
+                t.medium_confidence_threshold - t.low_confidence_threshold
+            )
+            confidence = max(0.0, min(1.0, confidence))
+        else:
+            classification = "Unknown"
+            risk = "Very Low"
+            confidence = 0.0
+
+        # Refine risk based on additional factors
+        risk = self._refine_risk(weighted_score, thresholds=t)
+
+        return classification, risk, max(0.0, min(1.0, confidence))
+
+    def _refine_risk(
+        self, weighted_score: float, thresholds: DecisionThresholds
+    ) -> str:
+        """Refine risk level based on detailed signal analysis."""
+        risk_upgrades = []
+        risk_downgrades = []
+
+        # Check for high-risk indicators
+        if weighted_score > 0.6:
+            risk_upgrades.append("upgrade")
+        if weighted_score > 0.8:
+            risk_upgrades.append("upgrade")
+
+        # Check for downgrades
+        if weighted_score < 0.3:
+            risk_downgrades.append("downgrade")
+        if weighted_score < 0.1:
+            risk_downgrades.append("downgrade")
+
+        risk_level = "Medium"  # default
+        if risk_upgrades and not risk_downgrades:
+            upgrade_map = {
+                "Very Low": "Low",
+                "Low": "Medium",
+                "Medium": "High",
+                "High": "Critical",
+            }
+            risk_level = upgrade_map.get("Medium", "Medium")
+        elif risk_downgrades and not risk_upgrades:
+            downgrade_map = {
+                "Critical": "High",
+                "High": "Medium",
+                "Medium": "Low",
+                "Low": "Very Low",
+            }
+            risk_level = downgrade_map.get("Medium", "Medium")
+
+        return risk_level
+
+    def fuse(
+        self, inputs: SignalInputs, thresholds: Optional[DecisionThresholds] = None
+    ) -> FusionResult:
+        """Fuse all evidence and produce a decision result."""
+        t = thresholds or self.thresholds
+        weighted_score = self.compute_weighted_score(inputs)
+
+        classification, risk_level, confidence = self.classify(weighted_score, t)
+
+        # Identify conflicting evidence
+        conflicting = self._detect_conflicts(inputs)
+
+        # Build signal breakdown
+        breakdown = self._compute_signal_breakdown(inputs)
+
+        return FusionResult(
+            classification=classification,
+            risk_level=risk_level,
+            confidence=confidence,
+            weighted_score=weighted_score,
+            contributing_signals=self._extract_contributing_signals(inputs),
+            conflicting_evidence=conflicting,
+            signal_breakdown=breakdown,
+        )
+
+    def _detect_conflicts(self, inputs: SignalInputs) -> List[Dict[str, Any]]:
+        """Detect conflicting evidence across subsystems."""
+        conflicts = []
+
+        # High ML confidence but low retrieval confidence
+        ml_conf = inputs.ml.get("confidence", 0)
+        retr_conf = inputs.retrieval.get("confidence", 0)
+        if ml_conf > 0.7 and retr_conf < 0.3:
+            conflicts.append(
+                {
+                    "type": "ml_vs_retrieval",
+                    "description": "High ML confidence but low retrieval confidence",
+                    "ml_confidence": ml_conf,
+                    "retrieval_confidence": retr_conf,
+                }
+            )
+
+        # High retrieval but uncertain LLM
+        retr_conf = inputs.retrieval.get("confidence", 0)
+        llm_conf = inputs.llm.get("confidence", 0)
+        if retr_conf > 0.7 and llm_conf < 0.3:
+            conflicts.append(
+                {
+                    "type": "retrieval_vs_llm",
+                    "description": "High retrieval confidence but uncertain LLM",
+                    "retrieval_confidence": retr_conf,
+                    "llm_confidence": llm_conf,
+                }
+            )
+
+        # Strong manipulation but message appears legitimate
+        manipulation = inputs.llm.get("manipulation_detected", False)
+        semantic_conf = inputs.semantic.get("confidence", 0)
+        if manipulation and semantic_conf > 0.6:
+            conflicts.append(
+                {
+                    "type": "manipulation_vs_legitimate",
+                    "description": "Strong manipulation detected but message appears legitimate",
+                    "manipulation_detected": manipulation,
+                    "semantic_confidence": semantic_conf,
+                }
+            )
+
+        # Low knowledge trust
+        retr_knowledge = retr_conf * inputs.retrieval.get("knowledge_trust", 0.5)
+        if retr_knowledge < 0.3:
+            conflicts.append(
+                {
+                    "type": "low_knowledge_trust",
+                    "description": "Low knowledge document trust score",
+                    "knowledge_trust": retr_knowledge,
+                }
+            )
+
+        # Low semantic confidence
+        if semantic_conf := inputs.semantic.get("confidence", 0) < 0.3:
+            conflicts.append(
+                {
+                    "type": "low_semantic_confidence",
+                    "description": "Low semantic understanding confidence",
+                    "semantic_confidence": semantic_conf,
+                }
+            )
+
+        return conflicts
+
+    def _compute_signal_breakdown(
+        self, inputs: SignalInputs
+    ) -> Dict[str, Dict[str, float]]:
+        """Compute per-signal breakdown details."""
+        breakdown = {}
+for sig_name in [
+            "semantic",
+            "intent",
+            "behavior",
+            "retrieval",
+            "llm",
+            "ml",
+            "historical",
+            "entities",
+            "threat",
+        ]:
+            breakdown[sig_name] = {
+                "raw_score": self.normalize_signal(sig_name, data),
+                "weight": getattr(self.normalized_weights, f"{sig_name}_weight", 1.0),
+                "confidence": data.get("confidence", 0.0),
+            }
+        return breakdown
+
+    def _extract_contributing_signals(self, inputs: SignalInputs) -> Dict[str, float]:
+        """Extract the contributing score from each signal."""
+        contributing = {}
+        for sig_name in [
+            "semantic",
+            "intent",
+            "behavior",
+            "retrieval",
+            "llm",
+            "ml",
+            "historical",
+            "entities",
+            "threat",
+        ]:
+            score = self.normalize_signal(sig_name, getattr(inputs, sig_name))
+            contributing[sig_name] = score
+        return contributing
+
+
+class DecisionEngine:
+    """Centralized Decision Engine that combines outputs from every AI subsystem."""
+
+    def __init__(
+        self,
+        fusion_config: Optional[WeightingConfig] = None,
+        thresholds: Optional[DecisionThresholds] = None,
+    ):
+        self.fusion = EvidenceFusion(fusion_config, thresholds)
+        self.decision_thresholds = thresholds or DecisionThresholds()
+        self.risk_engine = RiskEngine(
+            weighting_config=self.fusion.weighting_config,
+            thresholds=self.decision_thresholds,
+        )
+        self.confidence_engine = ConfidenceEngine(
+            weighting_config=self.fusion.weighting_config,
+            thresholds=self.decision_thresholds,
+        )
+        self.recommendation_engine = RecommendationEngine(
+            weighting_config=self.fusion.weighting_config,
+            thresholds=self.decision_thresholds,
+        )
+        self.explanation_engine = ExplainabilityEngine(
+            weighting_config=self.fusion.weighting_config,
+            thresholds=self.decision_thresholds,
+        )
+
+    def process(
+        self,
+        semantic_output: Optional[Dict[str, Any]] = None,
+        intent_output: Optional[Dict[str, Any]] = None,
+        behavior_output: Optional[Dict[str, Any]] = None,
+        extraction_results: Optional[Dict[str, Any]] = None,
+        retrieval_output: Optional[Dict[str, Any]] = None,
+        retrieval_confidence: Optional[Dict[str, Any]] = None,
+        llm_output: Optional[Dict[str, Any]] = None,
+        llm_confidence: Optional[float] = None,
+        ml_output: Optional[Dict[str, Any]] = None,
+        ml_probabilities: Optional[Dict[str, float]] = None,
+        historical_analysis: Optional[Dict[str, Any]] = None,
+        system_metrics: Optional[Dict[str, Any]] = None,
+    ) -> DecisionOutput:
+        """Process all subsystem outputs and produce a final decision."""
+
+        # Build normalized signal inputs
+        inputs = SignalInputs()
+
+        # Semantic understanding
+        if semantic_output:
+            inputs.semantic = {
+                "confidence": semantic_output.get("confidence", 0.0),
+                "class": semantic_output.get("class", "Unknown"),
+            }
+
+        # Intent analysis
+        if intent_output:
+            inputs.intent = {
+                "confidence": intent_output.get("confidence", 0.0),
+                "primary_intent": intent_output.get("primary_intent", ""),
+                "secondary_intents": intent_output.get("secondary_intents", []),
+                "is_financial": intent_output.get("is_financial", False),
+            }
+
+        # Behavior analysis
+        if behavior_output:
+            inputs.behavior = {
+                "confidence": behavior_output.get("confidence", 0.0),
+                "urgency_level": behavior_output.get("urgency_level", ""),
+                "communication_style": behavior_output.get("communication_style", ""),
+                "manipulation_detected": behavior_output.get(
+                    "manipulation_detected", False
+                ),
+            }
+
+        # Entity extraction
+        if extraction_results:
+            inputs.entities = {
+                "confidence": extraction_results.get("confidence", 0.0),
+                "suspicious_sender": extraction_results.get("suspicious_sender", False),
+                "entities": extraction_results.get("entities", []),
+            }
+
+        # Threat intelligence
+        if extraction_results and "threat_score" in extraction_results:
+            inputs.threat = {
+                "confidence": extraction_results.get("threat_score", 0.0),
+                "threat_level": extraction_results.get("threat_level", "low"),
+                "providers": extraction_results.get("providers", []),
+                "indicators": extraction_results.get("indicators", []),
+            }
+
+        # RAG retrieval output
+        if retrieval_output:
+            inputs.retrieval = {
+                "confidence": (
+                    retrieval_confidence.get("confidence", 0.0)
+                    if retrieval_confidence
+                    else 0.0
+                ),
+                "category": retrieval_output.get("category", "Unknown"),
+                "knowledge_trust": retrieval_output.get("knowledge_trust", 0.5),
+                "suspicious_links": retrieval_output.get("suspicious_links", False),
+                "source_quality": retrieval_output.get("source_quality", 0.5),
+            }
+
+        # LLM reasoning output
+        if llm_output:
+            inputs.llm = {
+                "confidence": (
+                    llm_confidence
+                    if llm_confidence is not None
+                    else llm_output.get("confidence", 0.0)
+                ),
+                "classification": llm_output.get("classification", "Unknown"),
+                "reasoning_quality": llm_output.get("reasoning_quality", 0.5),
+                "manipulation_detected": llm_output.get("manipulation_detected", False),
+                "authority_impersonation": llm_output.get(
+                    "authority_impersonation", False
+                ),
+            }
+        elif llm_confidence is not None:
+            inputs.llm = {
+                "confidence": llm_confidence,
+                "classification": "Unknown",
+                "reasoning_quality": 0.5,
+                "manipulation_detected": False,
+                "authority_impersonation": False,
+            }
+
+        # Hybrid ML predictions
+        if ml_output:
+            inputs.ml = {
+                "confidence": ml_output.get("confidence", 0.0),
+                "prediction": ml_output.get("prediction", "Unknown"),
+                "probabilities": ml_probabilities or {},
+                "feature_importance_count": ml_output.get(
+                    "feature_importance_count", 0.5
+                ),
+                "high_probability_spam": ml_output.get("prediction", "") == "Spam"
+                and ml_output.get("confidence", 0) > 0.5,
+            }
+        elif ml_probabilities:
+            best_class = max(ml_probabilities, key=ml_probabilities.get)
+            best_prob = ml_probabilities[best_class]
+            inputs.ml = {
+                "confidence": best_prob,
+                "prediction": best_class,
+                "probabilities": ml_probabilities,
+                "feature_importance_count": 0.5,
+                "high_probability_spam": best_class == "Spam" and best_prob > 0.5,
+            }
+
+        # Historical analysis
+        if historical_analysis:
+            inputs.historical = {
+                "consistency": historical_analysis.get("consistency", 0.5),
+                "patterns": historical_analysis.get("patterns", []),
+                "previous_similar": historical_analysis.get("previous_similar", []),
+            }
+
+        # Step 1: Fuse evidence
+        fusion_result = self.fusion.fuse(inputs, self.decision_thresholds)
+
+        # Step 2: Risk engine
+        risk_result = self.risk_engine.compute_risk(inputs)
+
+        # Step 3: Confidence engine
+        confidence_result = self.confidence_engine.compute_confidence(inputs)
+
+        # Step 4: Generate recommendations
+        recommendations = self.recommendation_engine.generate(
+            classification=fusion_result.classification,
+            risk_level=risk_result["risk_level"],
+            confidence=confidence_result["overall_confidence"],
+            inputs=inputs,
+        )
+
+        # Step 5: Build explanation
+        explanation = self.explanation_engine.generate(
+            fusion_result=fusion_result,
+            risk_result=risk_result,
+            confidence_result=confidence_result,
+            inputs=inputs,
+            recommendations=recommendations,
+        )
+
+        # Step 6: Build final decision output
+        output = DecisionOutput(
+            classification=fusion_result.classification,
+            risk_level=risk_result["risk_level"],
+            confidence=confidence_result["overall_confidence"],
+            signals=self._build_signals(inputs, fusion_result),
+            evidence=self._build_evidence(
+                fusion_result, risk_result, confidence_result, inputs
+            ),
+            reasoning_summary=explanation.reasoning_summary,
+            recommendations=[rec.to_dict() for rec in recommendations],
+            limitations=explanation.limitations,
+            references=explanation.references,
+        )
+
+        # Add risk factors to signals
+        output.signals["risk_factors"] = {
+            "credential_request": risk_result["credential_request"],
+            "financial_request": risk_result["financial_request"],
+            "urgent_action": risk_result["urgent_action"],
+            "manipulation_detected": risk_result["manipulation_detected"],
+            "authority_impersonation": risk_result["authority_impersonation"],
+            "suspicious_links": risk_result["suspicious_links"],
+            "unknown_domain": risk_result["unknown_domain"],
+            "behavioral_anomalies": risk_result["behavioral_anomalies"],
+        }
+
+        return output
+
+    def _build_signals(
+        self, inputs: SignalInputs, fusion_result: FusionResult
+    ) -> Dict[str, Any]:
+        """Build the signals dictionary for the output."""
+        return {
+            "semantic": {
+                "class": inputs.semantic.get("class", "Unknown"),
+                "confidence": inputs.semantic.get("confidence", 0.0),
+            },
+            "intent": {
+                "primary_intent": inputs.intent.get("primary_intent", ""),
+                "secondary_intents": inputs.intent.get("secondary_intents", []),
+                "is_financial": inputs.intent.get("is_financial", False),
+                "confidence": inputs.intent.get("confidence", 0.0),
+            },
+            "behavior": {
+                "urgency_level": inputs.behavior.get("urgency_level", ""),
+                "manipulation_detected": inputs.behavior.get(
+                    "manipulation_detected", False
+                ),
+                "confidence": inputs.behavior.get("confidence", 0.0),
+            },
+            "retrieval": {
+                "category": inputs.retrieval.get("category", "Unknown"),
+                "knowledge_trust": inputs.retrieval.get("knowledge_trust", 0.5),
+                "suspicious_links": inputs.retrieval.get("suspicious_links", False),
+                "confidence": inputs.retrieval.get("confidence", 0.0),
+            },
+            "llm": {
+                "classification": inputs.llm.get("classification", "Unknown"),
+                "reasoning_quality": inputs.llm.get("reasoning_quality", 0.5),
+                "manipulation_detected": inputs.llm.get("manipulation_detected", False),
+                "confidence": inputs.llm.get("confidence", 0.0),
+            },
+            "ml": {
+                "prediction": inputs.ml.get("prediction", "Unknown"),
+                "confidence": inputs.ml.get("confidence", 0.0),
+                "probabilities": inputs.ml.get("probabilities", {}),
+            },
+            "fusion": {
+                "weighted_score": fusion_result.weighted_score,
+                "contributing_signals": fusion_result.contributing_signals,
+                "conflicting_evidence_count": len(fusion_result.conflicting_evidence),
+            },
+        }
+
+    def _build_evidence(
+        self,
+        fusion_result: FusionResult,
+        risk_result: Dict[str, Any],
+        confidence_result: Dict[str, Any],
+        inputs: SignalInputs,
+    ) -> List[Dict[str, Any]]:
+        """Build the evidence list for the output."""
+        evidence = []
+
+        # Add high-confidence contributing signals
+        for sig_name, score in fusion_result.contributing_signals.items():
+            if score > 0.3:
+                evidence.append(
+                    {
+                        "source": sig_name,
+                        "type": "signal",
+                        "score": score,
+                        "weight": getattr(
+                            self.fusion.normalized_weights, f"{sig_name}_weight", 1.0
+                        ),
+                    }
+                )
+
+        # Add detected risk factors
+        if risk_result.get("credential_request"):
+            evidence.append(
+                {
+                    "source": "risk_engine",
+                    "type": "credential_request",
+                    "severity": "high",
+                }
+            )
+        if risk_result.get("financial_request"):
+            evidence.append(
+                {
+                    "source": "risk_engine",
+                    "type": "financial_request",
+                    "severity": "high",
+                }
+            )
+        if risk_result.get("manipulation_detected"):
+            evidence.append(
+                {
+                    "source": "risk_engine",
+                    "type": "manipulation",
+                    "severity": "high",
+                }
+            )
+        if risk_result.get("suspicious_links"):
+            evidence.append(
+                {
+                    "source": "risk_engine",
+                    "type": "suspicious_links",
+                    "severity": "medium",
+                }
+            )
+
+        # Add supporting knowledge from retrieval
+        if inputs.retrieval:
+            kt = inputs.retrieval.get("knowledge_trust", 0.5)
+            if kt > 0.5:
+                evidence.append(
+                    {
+                        "source": "retrieved_knowledge",
+                        "type": "knowledge_document",
+                        "trust_score": kt,
+                    }
+                )
+
+        # Add ML contribution
+        if inputs.ml.get("confidence", 0) > 0.3:
+            evidence.append(
+                {
+                    "source": "ml_engine",
+                    "type": "prediction",
+                    "prediction": inputs.ml.get("prediction", "Unknown"),
+                    "confidence": inputs.ml.get("confidence", 0.0),
+                }
+            )
+
+        # Add LLM contribution
+        if inputs.llm.get("confidence", 0) > 0.3:
+            evidence.append(
+                {
+                    "source": "llm_reasoning",
+                    "type": "classification",
+                    "classification": inputs.llm.get("classification", "Unknown"),
+                    "confidence": inputs.llm.get("confidence", 0.0),
+                }
+            )
+
+        # Add threat intelligence evidence
+        if inputs.threat and inputs.threat.get("confidence", 0) > 0.3:
+            evidence.append(
+                {
+                    "source": "threat_intelligence",
+                    "type": "threat_indicator",
+                    "threat_level": inputs.threat.get("threat_level", "low"),
+                    "confidence": inputs.threat.get("confidence", 0.0),
+                    "providers": inputs.threat.get("providers", []),
+                    "indicators": len(inputs.threat.get("indicators", [])),
+                }
+            )
+
+        return evidence
+
+
+class RiskEngine:
+    """Dedicated Risk Engine for computing risk levels."""
+
+    def __init__(
+        self,
+        weighting_config: Optional[WeightingConfig] = None,
+        thresholds: Optional[DecisionThresholds] = None,
+    ):
+        self.weighting_config = weighting_config or WC()
+        self.thresholds = thresholds or DecisionThresholds()
+
+    def compute_risk(self, inputs: SignalInputs) -> Dict[str, Any]:
+        """Compute risk level and factors from all inputs."""
+        risk_factors = RiskFactors()
+
+        # Check credential requests
+        risk_factors.credential_request = (
+            inputs.intent.get("is_financial", False)
+            or inputs.behavior.get("urgency_level") in ["high", "critical"]
+            or inputs.llm.get("authority_impersonation", False)
+        )
+
+        # Check financial requests
+        risk_factors.financial_request = inputs.intent.get("is_financial", False)
+
+        # Check urgent action
+        risk_factors.urgent_action = inputs.behavior.get("urgency_level") in [
+            "high",
+            "critical",
+        ]
+
+        # Check manipulation detected
+        risk_factors.manipulation_detected = inputs.llm.get(
+            "manipulation_detected", False
+        ) or inputs.behavior.get("manipulation_detected", False)
+
+        # Check authority impersonation
+        risk_factors.authority_impersonation = inputs.llm.get(
+            "authority_impersonation", False
+        ) or inputs.behavior.get("communication_style", "") in [
+            "authoritative",
+            "demanding",
+        ]
+
+        # Check suspicious links
+        risk_factors.suspicious_links = inputs.retrieval.get(
+            "suspicious_links", False
+        ) or inputs.entities.get("suspicious_sender", False)
+
+        # Check unknown domain
+        risk_factors.unknown_domain = (
+            inputs.retrieval.get("unknown_domain", False)
+            or inputs.retrieval.get("domain_reputation", 1.0) > 0.8
+        )
+
+        # Check behavioral anomalies
+        risk_factors.behavioral_anomalies = inputs.behavior.get(
+            "communication_style", ""
+        ) in ["urgent", "threatening", "deceptive"]
+
+        # LLM reasoning flags
+        risk_factors.llm_reasoning_flags = {
+            "manipulation": risk_factors.manipulation_detected,
+            "authority_impersonation": risk_factors.authority_impersonation,
+        }
+
+        # ML flags
+        risk_factors.ml_flags = {
+            "high_probability_spam": inputs.ml.get("high_probability_spam", False),
+        }
+
+        # Compute overall risk level
+        risk_score = self._compute_risk_score(risk_factors)
+        risk_level = self._score_to_risk_level(risk_score)
+
+        return {
+            "risk_level": risk_level,
+            "risk_score": risk_score,
+            "credential_request": risk_factors.credential_request,
+            "financial_request": risk_factors.financial_request,
+            "urgent_action": risk_factors.urgent_action,
+            "manipulation_detected": risk_factors.manipulation_detected,
+            "authority_impersonation": risk_factors.authority_impersonation,
+            "suspicious_links": risk_factors.suspicious_links,
+            "unknown_domain": risk_factors.unknown_domain,
+            "behavioral_anomalies": risk_factors.behavioral_anomalies,
+            "details": {
+                "credential_indicators": self._get_credential_indicators(risk_factors),
+                "manipulation_indicators": self._get_manipulation_indicators(
+                    risk_factors
+                ),
+            },
+        }
+
+    def _compute_risk_score(self, risk_factors: RiskFactors) -> float:
+        """Compute a numeric risk score from 0-1."""
+        score = 0.0
+
+        if risk_factors.credential_request:
+            score += 0.2
+        if risk_factors.financial_request:
+            score += 0.25
+        if risk_factors.urgent_action:
+            score += 0.15
+        if risk_factors.manipulation_detected:
+            score += 0.2
+        if risk_factors.authority_impersonation:
+            score += 0.2
+        if risk_factors.suspicious_links:
+            score += 0.1
+        if risk_factors.unknown_domain:
+            score += 0.1
+        if risk_factors.behavioral_anomalies:
+            score += 0.1
+
+        return min(1.0, max(0.0, score))
+
+    def _score_to_risk_level(self, risk_score: float) -> str:
+        """Convert numeric risk score to risk level."""
+        t = self.thresholds
+        if risk_score >= t.critical_risk_threshold:
+            return "Critical"
+        elif risk_score >= t.high_risk_threshold:
+            return "High"
+        elif risk_score >= t.medium_risk_threshold:
+            return "Medium"
+        elif risk_score >= t.low_risk_threshold:
+            return "Low"
+        else:
+            return "Very Low"
+
+    def _get_credential_indicators(self, risk_factors: RiskFactors) -> List[str]:
+        """Get list of credential request indicators."""
+        indicators = []
+        if risk_factors.credential_request:
+            if risk_factors.financial_request:
+                indicators.append("financial_credential_request")
+            if risk_factors.urgent_action:
+                indicators.append("urgent_credential_request")
+            if risk_factors.manipulation_detected:
+                indicators.append("manipulation_for_credentials")
+            if risk_factors.authority_impersonation:
+                indicators.append("authority_impersonation_credentials")
+        return indicators
+
+    def _get_manipulation_indicators(self, risk_factors: RiskFactors) -> List[str]:
+        """Get list of manipulation indicators."""
+        indicators = []
+        if risk_factors.manipulation_detected:
+            indicators.append("behavioral_manipulation")
+        if risk_factors.authority_impersonation:
+            indicators.append("authority_impersonation")
+        return indicators
+
+
+class ConfidenceEngine:
+    """Calculate overall confidence from multiple sources."""
+
+    def __init__(
+        self,
+        weighting_config: Optional[WeightingConfig] = None,
+        thresholds: Optional[DecisionThresholds] = None,
+    ):
+        self.weighting_config = weighting_config or WC()
+        self.thresholds = thresholds or DecisionThresholds()
+
+    def compute_confidence(self, inputs: SignalInputs) -> Dict[str, Any]:
+        """Compute overall confidence from multiple sources."""
+        semantic_conf = inputs.semantic.get("confidence", 0.0)
+        retrieval_conf = inputs.retrieval.get("confidence", 0.0)
+        llm_conf = inputs.llm.get("confidence", 0.0)
+        ml_conf = inputs.ml.get("confidence", 0.0)
+        entity_conf = inputs.entities.get("confidence", 0.0)
+        historical_conf = (
+            inputs.historical.get("consistency", 0.5) if inputs.historical else 0.5
+        )
+
+        confidences = [semantic_conf, retrieval_conf, llm_conf, ml_conf, entity_conf]
+        non_zero_conf = [c for c in confidences if c > 0]
+        agreement_count = sum(1 for c in non_zero_conf if c > 0.5)
+        total_count = len([c for c in confidences if c > 0])
+        agreement_ratio = agreement_count / total_count if total_count > 0 else 0
+
+        weights = self.weighting_config
+        weighted_sum = (
+            semantic_conf * weights.semantic_weight
+            + retrieval_conf * weights.retrieval_confidence_weight
+            + llm_conf * weights.llm_confidence_weight
+            + ml_conf * weights.ml_probability_weight
+            + entity_conf * weights.entity_confidence_weight
+        )
+        total_weight = (
+            weights.semantic_weight
+            + weights.retrieval_confidence_weight
+            + weights.llm_confidence_weight
+            + weights.ml_probability_weight
+            + weights.entity_confidence_weight
+        )
+        base_confidence = weighted_sum / total_weight if total_weight > 0 else 0.0
+
+        if agreement_ratio < 0.4:
+            agreement_penalty = 0.2 * (1 - agreement_ratio)
+            adjusted_confidence = max(0.0, base_confidence - agreement_penalty)
+        elif agreement_ratio > 0.8:
+            agreement_boost = 0.05 * (agreement_ratio - 0.8)
+            adjusted_confidence = min(1.0, base_confidence + agreement_boost)
+        else:
+            adjusted_confidence = base_confidence
+
+        knowledge_trust = inputs.retrieval.get("knowledge_trust", 0.5)
+        adjusted_confidence *= knowledge_trust
+
+        overall_confidence = max(0.0, min(1.0, adjusted_confidence))
+
+        return {
+            "overall_confidence": overall_confidence,
+            "semantic_confidence": semantic_conf,
+            "retrieval_confidence": retrieval_conf,
+            "llm_confidence": llm_conf,
+            "ml_confidence": ml_conf,
+            "entity_confidence": entity_conf,
+            "historical_consistency": historical_conf,
+            "agreement_ratio": agreement_ratio,
+            "base_confidence": base_confidence,
+            "confidence_breakdown": {
+                "agreement_penalty_applied": agreement_ratio < 0.4,
+                "agreement_boost_applied": agreement_ratio > 0.8,
+                "knowledge_trust_factor": knowledge_trust,
+            },
+        }
+
+
+class RecommendationEngine:
+    """Generate recommendations based on decision evidence."""
+
+    def __init__(
+        self,
+        weighting_config: Optional[WeightingConfig] = None,
+        thresholds: Optional[DecisionThresholds] = None,
+    ):
+        self.weighting_config = weighting_config or WC()
+        self.thresholds = thresholds or DecisionThresholds()
+
+    def generate(
+        self,
+        classification: str,
+        risk_level: str,
+        confidence: float,
+        inputs: SignalInputs,
+    ) -> List[Recommendation]:
+        """Generate recommendations based on classification, risk, and evidence."""
+        recommendations = []
+
+        if risk_level in ["Critical", "High"]:
+            if classification == "Spam":
+                recommendations.append(
+                    Recommendation(
+                        text="Do Not Click Links",
+                        rationale="High-risk spam detected - links may lead to malware or phishing",
+                        confidence=confidence,
+                    )
+                )
+                recommendations.append(
+                    Recommendation(
+                        text="Do Not Share Credentials",
+                        rationale="Credential harvesting suspected - do not enter any passwords or personal information",
+                        confidence=confidence,
+                    )
+                )
+            elif classification == "Suspicious":
+                recommendations.append(
+                    Recommendation(
+                        text="Exercise Caution",
+                        rationale="Message contains suspicious elements - verify before acting",
+                        confidence=confidence,
+                    )
+                )
+            else:
+                recommendations.append(
+                    Recommendation(
+                        text="Verify with Sender",
+                        rationale="High risk message - verify legitimacy through official channels",
+                        confidence=confidence,
+                    )
+                )
+        elif risk_level == "Medium":
+            if classification == "Spam":
+                recommendations.append(
+                    Recommendation(
+                        text="Likely Legitimate",
+                        rationale="Message appears legitimate after review",
+                        confidence=confidence,
+                    )
+                )
+            elif classification == "Suspicious":
+                recommendations.append(
+                    Recommendation(
+                        text="Exercise Caution",
+                        rationale="Some suspicious elements detected - review carefully",
+                        confidence=confidence,
+                    )
+                )
+            else:
+                recommendations.append(
+                    Recommendation(
+                        text="Likely Legitimate",
+                        rationale="Message appears legitimate with minor concerns",
+                        confidence=confidence,
+                    )
+                )
+        elif risk_level == "Low":
+            if classification == "Ham":
+                recommendations.append(
+                    Recommendation(
+                        text=(
+                            "Safe to Ignore"
+                            if confidence > 0.7
+                            else "Likely Legitimate"
+                        ),
+                        rationale="Message is legitimate - safe to proceed",
+                        confidence=confidence,
+                    )
+                )
+            else:
+                recommendations.append(
+                    Recommendation(
+                        text="Likely Legitimate",
+                        rationale="Message appears legitimate",
+                        confidence=confidence,
+                    )
+                )
+
+        if inputs.behavior.get("manipulation_detected", False):
+            recommendations.append(
+                Recommendation(
+                    text="Do Not Click Links",
+                    rationale="Manipulation techniques detected - do not interact with message content",
+                    confidence=inputs.behavior.get("confidence", 0.0),
+                )
+            )
+
+        if inputs.behavior.get("urgency_level") in ["high", "critical"]:
+            recommendations.append(
+                Recommendation(
+                    text="Verify with Sender",
+                    rationale="Urgency tactic detected - do not act hastily, verify legitimacy",
+                    confidence=inputs.behavior.get("confidence", 0.0),
+                )
+            )
+
+        if inputs.intent.get("is_financial", False):
+            recommendations.append(
+                Recommendation(
+                    text="Do Not Share Credentials",
+                    rationale="Financial intent detected - never share credentials via message",
+                    confidence=inputs.intent.get("confidence", 0.0),
+                )
+            )
+
+        seen = set()
+        unique_recs = []
+        for rec in recommendations:
+            key = (rec.text, rec.rationale)
+            if key not in seen:
+                seen.add(key)
+                unique_recs.append(rec)
+
+        unique_recs.sort(key=lambda r: r.confidence, reverse=True)
+        return unique_recs[:5]
+
+
+class ExplainabilityEngine:
+    """Generate explainable output with full traceability."""
+
+    def __init__(
+        self,
+        weighting_config: Optional[WeightingConfig] = None,
+        thresholds: Optional[DecisionThresholds] = None,
+    ):
+        self.weighting_config = weighting_config or WC()
+        self.thresholds = thresholds or DecisionThresholds()
+
+    def generate(
+        self,
+        fusion_result: Any,
+        risk_result: Dict[str, Any],
+        confidence_result: Dict[str, Any],
+        inputs: SignalInputs,
+        recommendations: List[Any],
+    ) -> Explanation:
+        """Generate full explanation with traceability."""
+
+        summary_parts = []
+        if fusion_result.classification == "Spam":
+            summary_parts.append("Spam message detected")
+        elif fusion_result.classification == "Suspicious":
+            summary_parts.append("Suspicious message with mixed signals")
+        elif fusion_result.classification == "Ham":
+            summary_parts.append("Legitimate message confirmed")
+
+        if risk_result.get("risk_level") in ["High", "Critical"]:
+            summary_parts.append(f"High risk ({risk_result.get('risk_level')})")
+        elif risk_result.get("risk_level") == "Medium":
+            summary_parts.append("Medium risk - exercise caution")
+
+        summary = " ".join(summary_parts) if summary_parts else "Message analyzed"
+
+        decision = fusion_result.classification
+        risk = risk_result.get("risk_level", "Low")
+        confidence = confidence_result.get("overall_confidence", 0.0)
+
+        key_evidence = []
+        for sig_name, score in fusion_result.contributing_signals.items():
+            if score > 0.3:
+                key_evidence.append(
+                    {
+                        "source": sig_name,
+                        "score": score,
+                        "weight": getattr(
+                            self.weighting_config, f"{sig_name}_weight", 1.0
+                        ),
+                    }
+                )
+
+        supporting_knowledge = []
+        if inputs.retrieval:
+            kt = inputs.retrieval.get("knowledge_trust", 0.5)
+            if kt > 0.5:
+                supporting_knowledge.append(
+                    {
+                        "source": "retrieved_knowledge",
+                        "type": "knowledge_document",
+                        "trust_score": kt,
+                    }
+                )
+
+        detected_behaviors = []
+        if inputs.behavior.get("manipulation_detected", False):
+            detected_behaviors.append("manipulation")
+        if inputs.behavior.get("urgency_level") in ["high", "critical"]:
+            detected_behaviors.append("urgency_tactic")
+        if inputs.intent.get("is_financial", False):
+            detected_behaviors.append("financial_intent")
+
+        detected_intents = []
+        primary = inputs.intent.get("primary_intent", "")
+        if primary:
+            detected_intents.append(primary)
+        for secondary in inputs.intent.get("secondary_intents", []):
+            detected_intents.append(secondary)
+
+        ml_contribution = {
+            "prediction": inputs.ml.get("prediction", "Unknown"),
+            "confidence": inputs.ml.get("confidence", 0.0),
+            "contributed": inputs.ml.get("confidence", 0) > 0.3,
+        }
+
+        llm_contribution = {
+            "classification": inputs.llm.get("classification", "Unknown"),
+            "confidence": inputs.llm.get("confidence", 0.0),
+            "reasoning_quality": inputs.llm.get("reasoning_quality", 0.5),
+            "contributed": inputs.llm.get("confidence", 0) > 0.3,
+        }
+
+        reasoning_parts = []
+        if fusion_result.classification == "Spam":
+            reasoning_parts.append(
+                "Evidence fusion identified spam characteristics across multiple subsystems"
+            )
+        elif fusion_result.classification == "Suspicious":
+            reasoning_parts.append(
+                "Mixed evidence from subsystems - classification based on weighted scoring"
+            )
+        elif fusion_result.classification == "Ham":
+            reasoning_parts.append("All subsystems indicate legitimate message")
+
+        if risk_result.get("manipulation_detected"):
+            reasoning_parts.append("Manipulation tactics detected in message behavior")
+        if risk_result.get("financial_request"):
+            reasoning_parts.append("Financial intent identified in message analysis")
+        if risk_result.get("suspicious_links"):
+            reasoning_parts.append("Suspicious links detected in retrieved content")
+
+        reasoning_summary = (
+            " ".join(reasoning_parts) if reasoning_parts else "Analysis completed"
+        )
+
+        conflicting = fusion_result.conflicting_evidence
+
+        limitations = []
+        if confidence_result.get("agreement_ratio", 1) < 0.4:
+            limitations.append(
+                "Low evidence agreement - decision based on partial signals"
+            )
+        if not inputs.retrieval:
+            limitations.append("No retrieval evidence available")
+        if not inputs.llm:
+            limitations.append("LLM reasoning not available")
+        if not inputs.ml:
+            limitations.append("ML predictions not available")
+
+        rec_list = []
+        for rec in recommendations:
+            rec_list.append(
+                {
+                    "text": rec.text,
+                    "rationale": rec.rationale,
+                    "confidence": rec.confidence,
+                }
+            )
+
+        references = []
+        if inputs.retrieval:
+            sources = inputs.retrieval.get("sources", [])
+            for source in sources[:3]:
+                references.append(
+                    {
+                        "source": source,
+                        "type": "knowledge_document",
+                        "trust_score": inputs.retrieval.get("knowledge_trust", 0.5),
+                    }
+                )
+
+        return Explanation(
+            summary=summary,
+            decision=decision,
+            risk=risk,
+            confidence=confidence,
+            key_evidence=key_evidence,
+            supporting_knowledge=supporting_knowledge,
+            detected_behaviors=detected_behaviors,
+            detected_intents=detected_intents,
+            ml_contribution=ml_contribution,
+            llm_contribution=llm_contribution,
+            reasoning_summary=reasoning_summary,
+            conflicting_evidence=conflicting,
+            limitations=limitations,
+            recommendations=rec_list,
+            references=references,
+        )
