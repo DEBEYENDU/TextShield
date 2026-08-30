@@ -1,4 +1,5 @@
 """Validation utilities shared by schemas and services."""
+
 from __future__ import annotations
 
 

@@ -3,6 +3,7 @@
 Used by services to build responses and by routes for error envelopes,
 so every API payload follows the same shape conventions.
 """
+
 from __future__ import annotations
 
 from typing import Any

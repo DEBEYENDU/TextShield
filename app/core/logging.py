@@ -10,6 +10,7 @@ Design rules (PRD privacy requirements):
 The request-id contextvar lets any module attach the current request id
 to its log output without threading it through every call.
 """
+
 from __future__ import annotations
 
 import logging

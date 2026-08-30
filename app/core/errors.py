@@ -7,6 +7,7 @@ future) reports errors through one consistent envelope:
 
 Sensitive details (stack traces) are logged server-side, never returned.
 """
+
 from __future__ import annotations
 
 import logging
@@ -21,7 +22,9 @@ from app.core.exceptions import AppError
 logger = logging.getLogger("app.errors")
 
 
-def _error_response(status_code: int, code: str, message: str, detail: object) -> JSONResponse:
+def _error_response(
+    status_code: int, code: str, message: str, detail: object
+) -> JSONResponse:
     return JSONResponse(
         status_code=status_code,
         content={"error": {"code": code, "message": message, "detail": detail}},

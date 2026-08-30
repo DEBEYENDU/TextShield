@@ -4,6 +4,7 @@ The primary feature representation is TF-IDF over normalized text
 (character and word n-grams). The TF-IDF vectorizer used for training is
 saved to disk and reused at inference time so train/serve stay consistent.
 """
+
 from __future__ import annotations
 
 from sklearn.feature_extraction.text import TfidfVectorizer

@@ -1,4 +1,5 @@
 """KB metadata repository: rows in ``kb_metadata``."""
+
 from __future__ import annotations
 
 import sqlite3
@@ -34,9 +35,7 @@ def upsert(
 
 
 def list_all(conn: sqlite3.Connection) -> list[dict[str, Any]]:
-    rows = conn.execute(
-        "SELECT * FROM kb_metadata ORDER BY added_at DESC"
-    ).fetchall()
+    rows = conn.execute("SELECT * FROM kb_metadata ORDER BY added_at DESC").fetchall()
     return [dict(r) for r in rows]
 
 
@@ -53,7 +52,9 @@ def count_documents(conn: sqlite3.Connection) -> int:
 
 
 def count_chunks(conn: sqlite3.Connection) -> int:
-    row = conn.execute("SELECT COALESCE(SUM(chunk_count), 0) AS c FROM kb_metadata").fetchone()
+    row = conn.execute(
+        "SELECT COALESCE(SUM(chunk_count), 0) AS c FROM kb_metadata"
+    ).fetchone()
     return int(row["c"]) if row else 0
 
 
@@ -65,5 +66,7 @@ def categories(conn: sqlite3.Connection) -> list[str]:
 
 
 def delete(conn: sqlite3.Connection, document_name: str) -> bool:
-    cursor = conn.execute("DELETE FROM kb_metadata WHERE document_name = ?", (document_name,))
+    cursor = conn.execute(
+        "DELETE FROM kb_metadata WHERE document_name = ?", (document_name,)
+    )
     return cursor.rowcount > 0

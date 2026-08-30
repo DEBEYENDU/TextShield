@@ -5,6 +5,7 @@ routes depend on a registry entry, not on import-time construction. The
 app factory seeds ``create_container``; tests may build their own
 container with stubbed services.
 """
+
 from __future__ import annotations
 
 import logging
@@ -84,7 +85,9 @@ def create_container(registry: ServiceRegistry | None = None) -> ServiceRegistry
     return registry
 
 
-def verify_container(registry: ServiceRegistry, logger: logging.Logger | None = None) -> list[str]:
+def verify_container(
+    registry: ServiceRegistry, logger: logging.Logger | None = None
+) -> list[str]:
     """Ensure every required service is registered; returns missing names."""
     missing = [name for name in _REQUIRED_SERVICES if name not in registry]
     if missing and logger:

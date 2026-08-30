@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Dict, Any, List, Optional
 from datetime import datetime
-import json
 
 
 class ExplanationRecord:
@@ -64,6 +63,7 @@ class ExplanationRecord:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ExplanationRecord":
         from datetime import datetime
+
         return cls(
             analysis_id=data.get("analysis_id", ""),
             classification=data.get("classification", ""),
@@ -79,7 +79,11 @@ class ExplanationRecord:
             reasoning_summary=data.get("reasoning_summary"),
             limitations=data.get("limitations"),
             recommendations=data.get("recommendations"),
-            timestamp=datetime.fromisoformat(data["timestamp"]) if "timestamp" in data else None,
+            timestamp=(
+                datetime.fromisoformat(data["timestamp"])
+                if "timestamp" in data
+                else None
+            ),
         )
 
 
@@ -87,11 +91,8 @@ class ExplainabilityEngine:
     """Engine for generating explainability reports."""
 
     @staticmethod
-    def generate_explanation(
-        analysis_record: Dict[str, Any],
-    ) -> ExplanationRecord:
+    def generate_explanation(analysis_record: Dict[str, Any]) -> ExplanationRecord:
         """Generate an explanation record from an analysis."""
-        # Extract components from the analysis record
         return ExplanationRecord(
             analysis_id=analysis_record.get("id", ""),
             classification=analysis_record.get("classification", "Unknown"),
@@ -109,38 +110,12 @@ class ExplainabilityEngine:
             recommendations=analysis_record.get("recommendations", []),
         )
 
-    @staticmethod
-    def generate_report(
-        explanation: ExplanationRecord,
-        format_name: str = "json",
-    ) -> str:
-        """Generate an explainability report in specified format."""
-        if format_name == "json":
-            return json.dumps(explanation.to_dict(), indent=2)
-        elif format_name == "markdown":
-            md = f"# Explanation Report\n\n"
-            md += f"- **Classification**: {explanation.classification}\n"
-            md += f"- **Confidence**: {explanation.confidence:.2%}\n"
-            md += f"- **Risk Level**: {explanation.risk_level}\n"
-            md += f"- **Reasoning**: {explanation.reasoning_summary}\n"
-            md += f"- **Supporting Evidence**: {len(explanation.supporting_evidence)} items\n"
-            md += f"- **Retrieved Knowledge**: {len(explanation.retrieved_knowledge)} items\n"
-            md += f"- **ML Contribution**: {explanation.ml_contribution}\n"
-            f"- **LLM Contribution**: {explanation.llm_contribution}\n"
-            md += f"- **Limitations**: {', '.join(explanation.limitations) if explanation.limitations else 'None'}\n"
-            md += f"- **Recommendations**: {', '.join(explanation.recommendations) if explanation.recommendations else 'None'}\n"
-            return md
-        return json.dumps(explanation.to_dict(), indent=2)
-
 
 class ExplainabilityReportGenerator:
-    """Generator for explainability reports in various formats."""
-
     @staticmethod
     def generate_classification_report(
         explanations: List[ExplanationRecord],
     ) -> Dict[str, Any]:
-        """Generate a classification explanation report."""
         if not explanations:
             return {"error": "No explanations found"}
 
@@ -152,25 +127,27 @@ class ExplainabilityReportGenerator:
                 )
                 for exp in explanations
             },
-            "average_confidence": sum(e.confidence for e in explanations)
-            / len(explanations)
-            if explanations
-            else 0,
-            "risk_distribution": {
-                exp.risk_level: sum(
-                    1 for e in explanations if e.risk_level == exp.risk_level
-                )
-                for exp in explanations
-            }
-            if explanations
-            else {},
+            "average_confidence": (
+                sum(e.confidence for e in explanations) / len(explanations)
+                if explanations
+                else 0
+            ),
+            "risk_distribution": (
+                {
+                    exp.risk_level: sum(
+                        1 for e in explanations if e.risk_level == exp.risk_level
+                    )
+                    for exp in explanations
+                }
+                if explanations
+                else {}
+            ),
         }
 
     @staticmethod
     def generate_evidence_report(
         explanations: List[ExplanationRecord],
     ) -> Dict[str, Any]:
-        """Generate an evidence explanation report."""
         if not explanations:
             return {"error": "No explanations found"}
 
@@ -185,10 +162,7 @@ class ExplainabilityReportGenerator:
                 set(e.get("source", "unknown") for e in all_evidence)
             ),
             "evidence_by_type": {
-                type_: sum(
-                    1 for e in all_evidence
-                    if e.get("type") == type_
-                )
+                type_: sum(1 for e in all_evidence if e.get("type") == type_)
                 for type_ in set(e.get("type", "unknown") for e in all_evidence)
             },
         }

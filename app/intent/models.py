@@ -14,58 +14,125 @@ from pydantic import BaseModel, Field
 # ---------------------------------------------------------------- vocab
 
 SENDER_INTENTS: tuple[str, ...] = (
-    "Inform", "Notify", "Advertise", "Promote", "Sell",
-    "Request Payment", "Request Credentials", "Request OTP",
-    "Request Personal Information", "Request Verification",
-    "Request Contact", "Request Download", "Request Installation",
-    "Request Account Update", "Offer Reward", "Offer Discount",
-    "Offer Job", "Threaten", "Warn", "Create Curiosity",
-    "Create Urgency", "Social Conversation", "Business Communication",
-    "Education", "Support", "Unknown",
+    "Inform",
+    "Notify",
+    "Advertise",
+    "Promote",
+    "Sell",
+    "Request Payment",
+    "Request Credentials",
+    "Request OTP",
+    "Request Personal Information",
+    "Request Verification",
+    "Request Contact",
+    "Request Download",
+    "Request Installation",
+    "Request Account Update",
+    "Offer Reward",
+    "Offer Discount",
+    "Offer Job",
+    "Threaten",
+    "Warn",
+    "Create Curiosity",
+    "Create Urgency",
+    "Social Conversation",
+    "Business Communication",
+    "Education",
+    "Support",
+    "Unknown",
 )
 
 REQUESTED_ACTIONS: tuple[str, ...] = (
-    "Click Link", "Reply", "Call Number", "Open Attachment",
-    "Visit Website", "Download File", "Install Application",
-    "Transfer Money", "Verify Identity", "Provide OTP",
-    "Provide Password", "Provide Banking Information",
-    "Provide Personal Information", "Purchase Product",
-    "Ignore", "No Action",
+    "Click Link",
+    "Reply",
+    "Call Number",
+    "Open Attachment",
+    "Visit Website",
+    "Download File",
+    "Install Application",
+    "Transfer Money",
+    "Verify Identity",
+    "Provide OTP",
+    "Provide Password",
+    "Provide Banking Information",
+    "Provide Personal Information",
+    "Purchase Product",
+    "Ignore",
+    "No Action",
 )
 
 BEHAVIORS: tuple[str, ...] = (
-    "Financial Request", "Credential Request", "Authentication Request",
-    "Identity Verification", "External Redirection",
-    "Information Collection", "Conversation Continuation",
-    "Marketing", "Advertisement", "Promotion", "Appointment",
-    "Reminder", "Support Conversation", "Customer Service",
+    "Financial Request",
+    "Credential Request",
+    "Authentication Request",
+    "Identity Verification",
+    "External Redirection",
+    "Information Collection",
+    "Conversation Continuation",
+    "Marketing",
+    "Advertisement",
+    "Promotion",
+    "Appointment",
+    "Reminder",
+    "Support Conversation",
+    "Customer Service",
     "Personal Discussion",
 )
 
 MANIPULATION_TECHNIQUES: tuple[str, ...] = (
-    "Urgency", "Fear", "Reward", "Greed", "Authority", "Scarcity",
-    "Curiosity", "Trust", "Familiarity", "Friendliness", "Pressure",
-    "Social Obligation", "Reciprocity", "Guilt", "Hope", "Excitement",
+    "Urgency",
+    "Fear",
+    "Reward",
+    "Greed",
+    "Authority",
+    "Scarcity",
+    "Curiosity",
+    "Trust",
+    "Familiarity",
+    "Friendliness",
+    "Pressure",
+    "Social Obligation",
+    "Reciprocity",
+    "Guilt",
+    "Hope",
+    "Excitement",
 )
 
 URGENCY_LEVELS: tuple[str, ...] = ("none", "low", "medium", "high", "critical")
 
 TRUST_SIGNAL_TYPES: tuple[str, ...] = (
-    "Official language", "Brand references", "Government references",
-    "Bank references", "Professional tone", "Formal formatting",
+    "Official language",
+    "Brand references",
+    "Government references",
+    "Bank references",
+    "Professional tone",
+    "Formal formatting",
     "Personal greetings",
 )
 
 CONVERSATION_STYLES: tuple[str, ...] = (
-    "Formal", "Informal", "Marketing", "Customer Support",
-    "Educational", "Transactional", "Personal", "Corporate",
-    "Promotional", "Unknown",
+    "Formal",
+    "Informal",
+    "Marketing",
+    "Customer Support",
+    "Educational",
+    "Transactional",
+    "Personal",
+    "Corporate",
+    "Promotional",
+    "Unknown",
 )
 
 COMMUNICATION_GOALS: tuple[str, ...] = (
-    "Share Information", "Collect Information", "Complete Transaction",
-    "Obtain Credentials", "Drive Website Traffic", "Build Trust",
-    "Create Fear", "Offer Opportunity", "Continue Conversation",
+    "Share Information",
+    "Collect Information",
+    "Complete Transaction",
+    "Obtain Credentials",
+    "Drive Website Traffic",
+    "Build Trust",
+    "Create Fear",
+    "Offer Opportunity",
+    "Continue Conversation",
 )
 
 # ---------------------------------------------------------------- schema
@@ -120,7 +187,9 @@ class IntentAnalysisResult(BaseModel):
         default_factory=lambda: ConversationStyle(style="Unknown", confidence=0.0)
     )
     communication_goal: CommunicationGoal = Field(
-        default_factory=lambda: CommunicationGoal(goal="Share Information", confidence=0.0)
+        default_factory=lambda: CommunicationGoal(
+            goal="Share Information", confidence=0.0
+        )
     )
     confidence: dict[str, float] = Field(
         default_factory=dict,
@@ -132,6 +201,7 @@ class IntentAnalysisResult(BaseModel):
 
 
 # ---------------------------------------------------------- strategies
+
 
 class DetectorStrategy:
     """Interface for a detector.

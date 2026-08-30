@@ -1,4 +1,5 @@
 """System logs repository: rows in ``system_logs``."""
+
 from __future__ import annotations
 
 import sqlite3

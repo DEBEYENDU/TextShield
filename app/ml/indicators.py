@@ -13,6 +13,7 @@ Each rule detects a pattern class (financial request, OTP scam,
 job scam, ...) and returns structured evidence including the matched
 text snippet so the explanation layer can quote it.
 """
+
 from __future__ import annotations
 
 import re
@@ -223,12 +224,32 @@ _PATTERNS: list[dict] = [
 
 # Extra patterns evaluated separately (regex-free helpers)
 _FREE_OFFER_WORDS = {
-    "free", "gift", "win", "won", "prize", "bonus", "reward", "lucky",
-    "discount", "offer", "cashback", "reward points",
+    "free",
+    "gift",
+    "win",
+    "won",
+    "prize",
+    "bonus",
+    "reward",
+    "lucky",
+    "discount",
+    "offer",
+    "cashback",
+    "reward points",
 }
 _URGENCY_WORDS = {
-    "urgent", "immediately", "now", "today", "soon", "hurry", "asap",
-    "fast", "quick", "limited", "expired", "expires",
+    "urgent",
+    "immediately",
+    "now",
+    "today",
+    "soon",
+    "hurry",
+    "asap",
+    "fast",
+    "quick",
+    "limited",
+    "expired",
+    "expires",
 }
 
 _SEVERITY_ORDER = {"high": 3, "medium": 2, "low": 1}

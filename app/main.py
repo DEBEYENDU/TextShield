@@ -7,6 +7,7 @@ tests and tooling get a clean instance per run:
     Services -> app/services (orchestration, no business logic in routes)
     Data -> app/database (migrations + repositories)
 """
+
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
@@ -24,6 +25,7 @@ from app.api import (
     routes_knowledge,
     routes_stats,
     routes_system,
+    routes_analytics,
 )
 from app.api.middleware import LoggingMiddleware, RequestIDMiddleware
 from app.core.container import ServiceRegistry, create_container, verify_container

@@ -11,6 +11,7 @@ API keys are read from environment variables only, never hard-coded.
 The LLM is optional: when unavailable, TextShield falls back to
 template-based explanations and classification still works.
 """
+
 from __future__ import annotations
 
 import json
@@ -98,7 +99,9 @@ def create_llm_client() -> LLMClient | None:
         return None
     model = settings.LLM_MODEL
     if not model:
-        logger.warning("LLM provider is %s but LLM_MODEL is empty - LLM disabled", provider)
+        logger.warning(
+            "LLM provider is %s but LLM_MODEL is empty - LLM disabled", provider
+        )
         return None
     try:
         if provider == "ollama":
@@ -106,12 +109,16 @@ def create_llm_client() -> LLMClient | None:
         if provider == "openai":
             return OpenAICompatClient(
                 settings.LLM_BASE_URL or "https://api.openai.com/v1",
-                model, settings.LLM_API_KEY, "openai",
+                model,
+                settings.LLM_API_KEY,
+                "openai",
             )
         if provider == "nvidia":
             return OpenAICompatClient(
                 settings.LLM_BASE_URL or "https://integrate.api.nvidia.com/v1",
-                model, settings.LLM_API_KEY, "nvidia",
+                model,
+                settings.LLM_API_KEY,
+                "nvidia",
             )
         logger.warning("Unknown LLM_PROVIDER %r - LLM disabled", provider)
         return None

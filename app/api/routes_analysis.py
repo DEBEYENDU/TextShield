@@ -1,4 +1,5 @@
 """Route module: POST /api/analyze (thin wrapper over the service)."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends

@@ -1,4 +1,5 @@
 """History service: query, filter, delete analysis history."""
+
 from __future__ import annotations
 
 from typing import Any

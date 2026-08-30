@@ -1,4 +1,5 @@
 """History repository: analysis rows in ``analyses``."""
+
 from __future__ import annotations
 
 import sqlite3
@@ -117,7 +118,5 @@ def clear(conn: sqlite3.Connection) -> int:
 
 
 def latest_timestamp(conn: sqlite3.Connection) -> str | None:
-    row = conn.execute(
-        "SELECT MAX(timestamp) AS t FROM analyses"
-    ).fetchone()
+    row = conn.execute("SELECT MAX(timestamp) AS t FROM analyses").fetchone()
     return row["t"] if row and row["t"] else None

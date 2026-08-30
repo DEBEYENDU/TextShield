@@ -3,6 +3,7 @@
 All user input is validated here: type constraints, length limits and
 content-presence rules. Requests failing validation produce HTTP 422.
 """
+
 from __future__ import annotations
 
 from typing import Literal
@@ -25,7 +26,9 @@ class AnalyzeRequest(BaseModel):
 
     input_type: Literal["sms", "text", "email"] = "text"
     message: str | None = Field(
-        default=None, max_length=_MAX_LEN, min_length=1,
+        default=None,
+        max_length=_MAX_LEN,
+        min_length=1,
         description="Full message text for SMS/TEXT input types.",
     )
     subject: str | None = Field(default=None, max_length=500)
