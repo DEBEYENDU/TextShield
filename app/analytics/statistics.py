@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
-from collections import Counter, defaultdict
-import json
+from collections import Counter
 
 
 class StatisticsEngine:
@@ -16,13 +15,12 @@ class StatisticsEngine:
         """Compute confidence distribution from analysis records."""
         confidences = []
         for r in records:
-            if hasattr(r, "metrics") and MetricKeys.ANALYSIS_CONFIDENCE in r.metrics:
-                confidences.append(r.metrics[MetricKeys.ANALYSIS_CONFIDENCE])
+            if hasattr(r, "metrics") and "analysis_confidence" in r.metrics:
+                confidences.append(r.metrics["analysis_confidence"])
 
         if not confidences:
             return {"error": "No confidence data found"}
 
-        # Histogram binning
         min_val = min(confidences)
         max_val = max(confidences)
         bin_width = (max_val - min_val) / bins if bins > 0 else 1
@@ -32,7 +30,6 @@ class StatisticsEngine:
             bin_lower = min_val + i * bin_width
             bin_upper = min_val + (i + 1) * bin_width
             count = sum(1 for c in confidences if bin_lower <= c < bin_upper)
-            # Include upper bound for last bin
             if i == bins - 1:
                 count += sum(1 for c in confidences if c == bin_upper)
 
@@ -56,8 +53,8 @@ class StatisticsEngine:
 
         counts = Counter()
         for r in records:
-            if hasattr(r, "metrics") and MetricKeys.ANALYSIS_RISK_LEVEL in r.metrics:
-                risk = r.metrics[MetricKeys.ANALYSIS_RISK_LEVEL]
+            if hasattr(r, "metrics") and "analysis_risk_level" in r.metrics:
+                risk = r.metrics["analysis_risk_level"]
                 counts[risk] += 1
 
         total = sum(counts.values())
@@ -125,8 +122,8 @@ class StatisticsEngine:
         """Compute processing time statistics."""
         times = []
         for r in records:
-            if hasattr(r, "metrics") and MetricKeys.ANALYSIS_PROCESSING_TIME in r.metrics:
-                times.append(r.metrics[MetricKeys.ANALYSIS_PROCESSING_TIME])
+            if hasattr(r, "metrics") and "analysis_processing_time" in r.metrics:
+                times.append(r.metrics["analysis_processing_time"])
 
         if not times:
             return {"error": "No processing time data found"}
@@ -149,6 +146,8 @@ class StatisticsEngine:
     ) -> Dict[str, Any]:
         """Compute daily usage statistics."""
         if start_date is None:
+            from datetime import datetime, timedelta
+
             start_date = datetime.now() - timedelta(days=30)
         if end_date is None:
             end_date = datetime.now()
@@ -159,16 +158,15 @@ class StatisticsEngine:
                 day_key = r.timestamp.strftime("%Y-%m-%d")
                 daily_counts[day_key] += 1
 
-        # Fill in missing days
         date_range = []
+        from datetime import datetime, timedelta
+
         current = start_date
         while current <= end_date:
             date_range.append(current.strftime("%Y-%m-%d"))
             current += timedelta(days=1)
 
-        filled_distribution = {
-            day: daily_counts.get(day, 0) for day in date_range
-        }
+        filled_distribution = {day: daily_counts.get(day, 0) for day in date_range}
 
         return {
             "daily_usage": filled_distribution,

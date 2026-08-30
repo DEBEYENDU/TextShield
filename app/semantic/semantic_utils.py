@@ -12,6 +12,7 @@ Deterministic text utilities shared by the pipeline stages:
 * token normalization
 * special-character handling
 """
+
 from __future__ import annotations
 
 import re
@@ -20,28 +21,35 @@ from email import message_from_string
 
 # ----------------------------------------------------------------- unicode
 _SMART_CHARS = {
-    "\u201c": '"', "\u201d": '"', "\u2018": "'", "\u2019": "'",
-    "\u2013": "-", "\u2014": "-", "\u00a0": " ", "\u200b": "",
-    "\u2026": "...", "\u20b9": "Rs", "\u00a9": "(c)", "\u00ae": "(r)",
+    "\u201c": '"',
+    "\u201d": '"',
+    "\u2018": "'",
+    "\u2019": "'",
+    "\u2013": "-",
+    "\u2014": "-",
+    "\u00a0": " ",
+    "\u200b": "",
+    "\u2026": "...",
+    "\u20b9": "Rs",
+    "\u00a9": "(c)",
+    "\u00ae": "(r)",
 }
 
 _WS_RUN = re.compile(r"\s+")
-_SPECIAL_KEEP = frozenset(
-    "!?.,;:%$€£₹&@#()[]{}/*+=-_\"'<>\\|~^"
-)
+_SPECIAL_KEEP = frozenset("!?.,;:%$€£₹&@#()[]{}/*+=-_\"'<>\\|~^")
 
 # ----------------------------------------------------------------- emoji
 # Comprehensive-enough emoji ranges (deterministic extraction).
 _EMOJI_PATTERN = re.compile(
     "["
-    "\U0001F000-\U0001FAFF"      # misc symbols, emoticons, etc.
-    "\U00002600-\U000027BF"      # misc symbols, dingbats
-    "\U0001F1E6-\U0001F1FF"      # flags
-    "\U0000FE00-\U0000FE0F"      # variation selectors
-    "\U00002700-\U000027BF"      # dingbats
-    "\U0001F900-\U0001F9FF"      # supplemental symbols
-    "\U00002300-\U000023FF"      # technical symbols
-    "\U0000FE20-\U0000FE2F"      # combining half marks
+    "\U0001f000-\U0001faff"  # misc symbols, emoticons, etc.
+    "\U00002600-\U000027bf"  # misc symbols, dingbats
+    "\U0001f1e6-\U0001f1ff"  # flags
+    "\U0000fe00-\U0000fe0f"  # variation selectors
+    "\U00002700-\U000027bf"  # dingbats
+    "\U0001f900-\U0001f9ff"  # supplemental symbols
+    "\U00002300-\U000023ff"  # technical symbols
+    "\U0000fe20-\U0000fe2f"  # combining half marks
     "]"
 )
 
@@ -71,8 +79,26 @@ _SCRIPT_RANGES: list[tuple[str, str, int, int]] = [
 
 _ABBREVIATIONS = frozenset(
     {
-        "mr", "mrs", "ms", "dr", "prof", "sr", "jr", "st", "vs", "etc",
-        "rs", "no", "nos", "fig", "inc", "ltd", "co", "dept", "u", "s",
+        "mr",
+        "mrs",
+        "ms",
+        "dr",
+        "prof",
+        "sr",
+        "jr",
+        "st",
+        "vs",
+        "etc",
+        "rs",
+        "no",
+        "nos",
+        "fig",
+        "inc",
+        "ltd",
+        "co",
+        "dept",
+        "u",
+        "s",
     }
 )
 
@@ -89,12 +115,50 @@ _QUESTION_WORD = re.compile(
 
 _IMPERATIVE_VERBS = frozenset(
     {
-        "click", "enter", "verify", "submit", "update", "confirm", "download",
-        "open", "press", "call", "send", "reply", "visit", "register", "login",
-        "log", "check", "scan", "reply", "contact", "provide", "share", "pay",
-        "transfer", "enable", "disable", "add", "remove", "select", "choose",
-        "visit", "follow", "read", "attach", "upload", "tell", "ask", "join",
-        "redeem", "claim", "activate", "deactivate", "set", "reset",
+        "click",
+        "enter",
+        "verify",
+        "submit",
+        "update",
+        "confirm",
+        "download",
+        "open",
+        "press",
+        "call",
+        "send",
+        "reply",
+        "visit",
+        "register",
+        "login",
+        "log",
+        "check",
+        "scan",
+        "reply",
+        "contact",
+        "provide",
+        "share",
+        "pay",
+        "transfer",
+        "enable",
+        "disable",
+        "add",
+        "remove",
+        "select",
+        "choose",
+        "visit",
+        "follow",
+        "read",
+        "attach",
+        "upload",
+        "tell",
+        "ask",
+        "join",
+        "redeem",
+        "claim",
+        "activate",
+        "deactivate",
+        "set",
+        "reset",
     }
 )
 

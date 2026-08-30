@@ -5,6 +5,7 @@
 * LoggingMiddleware records method, path, status and duration for every
   request. Request bodies are never logged (privacy).
 """
+
 from __future__ import annotations
 
 import time

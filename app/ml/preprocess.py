@@ -14,6 +14,7 @@ The cleaning is intentionally conservative:
 * placeholder substitution for URLs / emails / phones / money
 * keep '!', '?', digits, currency symbols (strong spam signals)
 """
+
 from __future__ import annotations
 
 import re
@@ -23,12 +24,8 @@ URL_PATTERN = re.compile(
     r"(?:https?://|www\.)\S+",
     re.IGNORECASE,
 )
-EMAIL_PATTERN = re.compile(
-    r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
-)
-PHONE_PATTERN = re.compile(
-    r"(?<!\d)(?:\+?\d[\d\s\-().]{7,}\d)(?!\d)"
-)
+EMAIL_PATTERN = re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}")
+PHONE_PATTERN = re.compile(r"(?<!\d)(?:\+?\d[\d\s\-().]{7,}\d)(?!\d)")
 MONEY_PATTERN = re.compile(
     r"(?:₹|rs\.?|inr|usd|eur|\$|€|£|pounds?|dollars?)\s?\d[\d,]*(?:\.\d+)?"
     r"|\d[\d,]*\.?\d*\s?(?:rs\.?|inr|usd|lakh|lakhs|crore|crores|k|grand|bucks)",
@@ -47,14 +44,76 @@ _REPEATED_PUNCT = re.compile(r"([!?])\1{2,}")
 # NOT applied by default (see tokenize()).
 STOPWORDS = frozenset(
     {
-        "a", "an", "the", "and", "or", "but", "if", "then", "else", "for",
-        "nor", "so", "yet", "in", "on", "at", "to", "of", "by", "with",
-        "from", "as", "into", "through", "is", "are", "was", "were", "be",
-        "been", "being", "am", "do", "does", "did", "have", "has", "had",
-        "will", "would", "can", "could", "may", "might", "shall", "should",
-        "this", "that", "these", "those", "it", "its", "you", "your", "we",
-        "our", "they", "their", "he", "she", "him", "her", "not", "no",
-        "yes", "get", "got", "just", "like", "please",
+        "a",
+        "an",
+        "the",
+        "and",
+        "or",
+        "but",
+        "if",
+        "then",
+        "else",
+        "for",
+        "nor",
+        "so",
+        "yet",
+        "in",
+        "on",
+        "at",
+        "to",
+        "of",
+        "by",
+        "with",
+        "from",
+        "as",
+        "into",
+        "through",
+        "is",
+        "are",
+        "was",
+        "were",
+        "be",
+        "been",
+        "being",
+        "am",
+        "do",
+        "does",
+        "did",
+        "have",
+        "has",
+        "had",
+        "will",
+        "would",
+        "can",
+        "could",
+        "may",
+        "might",
+        "shall",
+        "should",
+        "this",
+        "that",
+        "these",
+        "those",
+        "it",
+        "its",
+        "you",
+        "your",
+        "we",
+        "our",
+        "they",
+        "their",
+        "he",
+        "she",
+        "him",
+        "her",
+        "not",
+        "no",
+        "yes",
+        "get",
+        "got",
+        "just",
+        "like",
+        "please",
     }
 )
 
@@ -133,8 +192,14 @@ def tokenize(text: str, remove_stopwords: bool = False) -> list[str]:
 
 # ------------------------------------------------------ V2.0 pipeline pieces
 _SMART_CHARS = {
-    "\u201c": '"', "\u201d": '"', "\u2018": "'", "\u2019": "'",
-    "\u2013": "-", "\u2014": "-", "\u00a0": " ", "\u200b": "",
+    "\u201c": '"',
+    "\u201d": '"',
+    "\u2018": "'",
+    "\u2019": "'",
+    "\u2013": "-",
+    "\u2014": "-",
+    "\u00a0": " ",
+    "\u200b": "",
 }
 
 

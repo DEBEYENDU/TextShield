@@ -87,9 +87,21 @@ class IntentPipeline:
 
         from app.core.settings import settings
 
-        threshold = intent_threshold if intent_threshold is not None else settings.INTENT_CONFIDENCE_THRESHOLD
-        b_threshold = behavior_threshold if behavior_threshold is not None else settings.INTENT_BEHAVIOR_THRESHOLD
-        u_threshold = urgency_threshold if urgency_threshold is not None else settings.INTENT_URGENCY_THRESHOLD
+        threshold = (
+            intent_threshold
+            if intent_threshold is not None
+            else settings.INTENT_CONFIDENCE_THRESHOLD
+        )
+        b_threshold = (
+            behavior_threshold
+            if behavior_threshold is not None
+            else settings.INTENT_BEHAVIOR_THRESHOLD
+        )
+        u_threshold = (
+            urgency_threshold
+            if urgency_threshold is not None
+            else settings.INTENT_URGENCY_THRESHOLD
+        )
         max_n = max_intents if max_intents is not None else settings.INTENT_MAX_INTENTS
 
         intents = self.intents.detect(ctx, threshold=threshold, max_intents=max_n)
@@ -99,7 +111,9 @@ class IntentPipeline:
         urgency = self.context.urgency(ctx, threshold=u_threshold)
         trust_signals = self.context.trust_signals(ctx, threshold=b_threshold)
         style = self.context.conversation_style(ctx)
-        goal = self.context.communication_goal(ctx, intents, behaviors, trust_signals, manipulation)
+        goal = self.context.communication_goal(
+            ctx, intents, behaviors, trust_signals, manipulation
+        )
 
         confidence: dict[str, float] = {
             "intents": _average(intents),

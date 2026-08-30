@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 import json
-import hashlib
 
 
 class AuditLogger:
@@ -11,6 +10,7 @@ class AuditLogger:
 
     def __init__(self, log_file: str = "audit.log"):
         self.log_file = log_file
+        self._events: List[Dict[str, Any]] = []
 
     def log_event(
         self,
@@ -19,27 +19,17 @@ class AuditLogger:
         sensitivity_level: str = "medium",
     ):
         """Log an audit event."""
-        # Remove sensitive data before logging
         safe_data = self._sanitize_data(event_data)
-
         event_record = {
             "timestamp": datetime.utcnow().isoformat(),
             "event_type": event_type,
             "sensitivity_level": sensitivity_level,
             "data": safe_data,
         }
-
-        # In a real implementation, this would write to a secure log file
-        # For now, we'll just track in memory
-        if not hasattr(AuditLogger, "_events"):
-            AuditLogger._events = []
-
-        AuditLogger._events.append(event_record)
+        self._events.append(event_record)
 
     def _sanitize_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Remove sensitive information from event data."""
         sanitized = data.copy()
-        # Remove or mask sensitive fields
         sensitive_keys = ["message_content", "raw_text", "personal_data", "ssn"]
         for key in sensitive_keys:
             if key in sanitized:
@@ -49,46 +39,39 @@ class AuditLogger:
     def get_events(
         self,
         event_type: Optional[str] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
         limit: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
-        """Get audit events with filtering."""
-        events = getattr(AuditLogger, "_events", [])
+        events = self._events
 
-        # Filter by event type
         if event_type:
             events = [e for e in events if e["event_type"] == event_type]
 
-        # Filter by date range
         if start_date or end_date:
-            start = start_date or datetime.min
-            end = end_date or datetime.max
+            start = datetime.fromisoformat(start_date) if start_date else datetime.min
+            end = datetime.fromisoformat(end_date) if end_date else datetime.max
             events = [
-                e for e in events
+                e
+                for e in events
                 if start <= datetime.fromisoformat(e["timestamp"]) <= end
             ]
 
-        # Sort by timestamp (newest first)
         events.sort(key=lambda e: e["timestamp"], reverse=True)
 
-        # Apply limit
         if limit:
             events = events[:limit]
 
         return events
 
     def get_event_count(self, event_type: Optional[str] = None) -> int:
-        """Get count of events."""
-        events = getattr(AuditLogger, "_events", [])
+        events = self._events
         if event_type:
             return sum(1 for e in events if e["event_type"] == event_type)
         return len(events)
 
 
 class AuditService:
-    """Service for audit operations."""
-
     @staticmethod
     def log_analysis_execution(
         analysis_id: str,
@@ -98,7 +81,6 @@ class AuditService:
         processing_time: float,
         user_id: Optional[str] = None,
     ):
-        """Log analysis execution audit event."""
         AuditLogger().log_event(
             event_type="analysis_execution",
             event_data={
@@ -118,7 +100,6 @@ class AuditService:
         change_type: str,
         changed_by: Optional[str] = None,
     ):
-        """Log model change audit event."""
         AuditLogger().log_event(
             event_type="model_change",
             event_data={
@@ -135,7 +116,6 @@ class AuditService:
         update_type: str,
         changed_by: Optional[str] = None,
     ):
-        """Log knowledge base update audit event."""
         AuditLogger().log_event(
             event_type="knowledge_update",
             event_data={
@@ -147,16 +127,8 @@ class AuditService:
 
     @staticmethod
     def log_system_startup():
-        """Log system startup audit event."""
-        AuditLogger().log_event(
-            event_type="system_startup",
-            event_data={},
-        )
+        AuditLogger().log_event(event_type="system_startup", event_data={})
 
     @staticmethod
     def log_system_shutdown():
-        """Log system shutdown audit event."""
-        AuditLogger().log_event(
-            event_type="system_shutdown",
-            event_data={},
-        )
+        AuditLogger().log_event(event_type="system_shutdown", event_data={})

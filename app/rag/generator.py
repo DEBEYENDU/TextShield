@@ -13,6 +13,7 @@ Pipeline rules
   template-based explanation is used instead, and the response flags
   ``explanation_source == "template"``.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -71,7 +72,7 @@ def _format_intent(intent: dict | None) -> str:
     if description:
         line += f" ({description})"
     if evidence:
-        line += f" evidence=\"{evidence}\""
+        line += f' evidence="{evidence}"'
     return line
 
 
@@ -114,7 +115,9 @@ def generate_explanation(analysis: dict) -> dict:
                 return {
                     "text": str(payload["explanation"]).strip(),
                     "summary": str(payload.get("summary", "")).strip(),
-                    "recommendation": str(payload.get("recommended_action", "")).strip(),
+                    "recommendation": str(
+                        payload.get("recommended_action", "")
+                    ).strip(),
                     "source": "llm",
                 }
         except Exception as exc:
@@ -157,7 +160,8 @@ def template_explanation(analysis: dict) -> dict:
 
     if indicators:
         names = ", ".join(
-            f"{item['indicator'].lower()} ({item['severity']})" for item in indicators[:6]
+            f"{item['indicator'].lower()} ({item['severity']})"
+            for item in indicators[:6]
         )
         parts.append(f"Rule-based indicators detected: {names}.")
     else:
@@ -171,7 +175,9 @@ def template_explanation(analysis: dict) -> dict:
                 "suspicious URL patterns (static analysis only)."
             )
         else:
-            parts.append(f"{len(urls)} link(s) were found; none triggered pattern warnings.")
+            parts.append(
+                f"{len(urls)} link(s) were found; none triggered pattern warnings."
+            )
 
     if evidence:
         top = evidence[0]
@@ -183,11 +189,15 @@ def template_explanation(analysis: dict) -> dict:
     if classification == "SPAM" and "credentials" in {
         ind.get("category") for ind in indicators
     }:
-        parts.append("The message requests passwords, PINs or OTPs, which legitimate "
-                     "organizations never do.")
+        parts.append(
+            "The message requests passwords, PINs or OTPs, which legitimate "
+            "organizations never do."
+        )
 
     if classification == "SPAM" and intent_label in {
-        "credential_request", "money_transfer", "download_install",
+        "credential_request",
+        "money_transfer",
+        "download_install",
     }:
         parts.append(
             "The message is engineered to make you act on a request that "
@@ -197,7 +207,9 @@ def template_explanation(analysis: dict) -> dict:
     explanation = " ".join(parts)
 
     recommendation = _recommendation(analysis)
-    summary = f"{classification} content detected at {confidence * 100:.0f}% confidence."
+    summary = (
+        f"{classification} content detected at {confidence * 100:.0f}% confidence."
+    )
     return {
         "text": explanation,
         "summary": summary,
@@ -208,13 +220,17 @@ def template_explanation(analysis: dict) -> dict:
 
 def _recommendation(analysis: dict) -> str:
     if analysis.get("risk_level") == "UNCERTAIN":
-        return "The signals are too weak or contradictory for a confident verdict. " \
-               "Treat the message cautiously: verify the sender through a trusted " \
-               "official channel before acting, and re-check if you have more context."
+        return (
+            "The signals are too weak or contradictory for a confident verdict. "
+            "Treat the message cautiously: verify the sender through a trusted "
+            "official channel before acting, and re-check if you have more context."
+        )
 
     if analysis.get("risk_level") == "CRITICAL":
-        advice = ["REPORT THIS MESSAGE: do not click links, do not reply, and do not " \
-                  "enter any details."]
+        advice = [
+            "REPORT THIS MESSAGE: do not click links, do not reply, and do not "
+            "enter any details."
+        ]
         if analysis.get("classification") == "SPAM":
             advice.append(
                 "Contact the impersonated service through its official app or website, "
@@ -228,10 +244,14 @@ def _recommendation(analysis: dict) -> str:
 
     if analysis.get("classification") == "HAM":
         if analysis.get("risk_level") == "LOW":
-            return "No major spam indicators were detected. This message looks legitimate, " \
-                   "but avoid clicking links from unknown senders as a general habit."
-        return "The message looks like normal content but contains a few caution-worthy " \
-               "signals; verify the sender before acting on anything financial."
+            return (
+                "No major spam indicators were detected. This message looks legitimate, "
+                "but avoid clicking links from unknown senders as a general habit."
+            )
+        return (
+            "The message looks like normal content but contains a few caution-worthy "
+            "signals; verify the sender before acting on anything financial."
+        )
 
     categories = {item.get("category") for item in analysis.get("indicators", [])}
     has_urls = bool(analysis.get("urls"))
@@ -241,11 +261,17 @@ def _recommendation(analysis: dict) -> str:
     if "payment" in categories or "financial" in categories:
         advice.append("Do not send money or pay any fee.")
     if "urgency" in categories or "banking" in categories:
-        advice.append("Ignore urgent threats like account blocking; verify through the "
-                      "official app or website instead.")
+        advice.append(
+            "Ignore urgent threats like account blocking; verify through the "
+            "official app or website instead."
+        )
     if has_urls:
-        advice.append("Report the message to the impersonated brand's official helpline "
-                      "if it claims to be a known service.")
-    advice.append("If you already shared details, contact your bank or cyber cell over "
-                  "the official channel immediately.")
+        advice.append(
+            "Report the message to the impersonated brand's official helpline "
+            "if it claims to be a known service."
+        )
+    advice.append(
+        "If you already shared details, contact your bank or cyber cell over "
+        "the official channel immediately."
+    )
     return " ".join(advice)

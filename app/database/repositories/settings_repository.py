@@ -1,4 +1,5 @@
 """Settings repository: key/value rows in ``app_settings``."""
+
 from __future__ import annotations
 
 import sqlite3
@@ -6,7 +7,9 @@ from typing import Any
 
 
 def get(conn: sqlite3.Connection, key: str, default: Any = None) -> Any:
-    row = conn.execute("SELECT value FROM app_settings WHERE key = ?", (key,)).fetchone()
+    row = conn.execute(
+        "SELECT value FROM app_settings WHERE key = ?", (key,)
+    ).fetchone()
     return row["value"] if row else default
 
 

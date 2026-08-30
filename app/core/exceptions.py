@@ -4,6 +4,7 @@ Every error that can cross the API boundary is typed here, so routes
 stay thin: they raise domain exceptions and the global handlers (see
 ``app/core/errors.py``) translate them to HTTP responses.
 """
+
 from __future__ import annotations
 
 

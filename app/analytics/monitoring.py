@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, Any, List, Optional
-from datetime import datetime, timedelta
+from typing import Dict, Any, Optional
 import psutil
 import os
 
@@ -87,8 +86,6 @@ class ServiceHealth:
 
     @staticmethod
     def check_database() -> Dict[str, Any]:
-        """Check database health."""
-        # Placeholder - integrate with actual database
         return {
             "healthy": True,
             "response_time_ms": 0,
@@ -97,8 +94,6 @@ class ServiceHealth:
 
     @staticmethod
     def check_vector_database() -> Dict[str, Any]:
-        """Check vector database health."""
-        # Placeholder - integrate with actual vector DB
         return {
             "healthy": True,
             "response_time_ms": 0,
@@ -107,8 +102,6 @@ class ServiceHealth:
 
     @staticmethod
     def check_llm_provider() -> Dict[str, Any]:
-        """Check LLM provider health."""
-        # Placeholder - integrate with actual LLM
         return {
             "healthy": True,
             "response_time_ms": 0,
@@ -117,8 +110,6 @@ class ServiceHealth:
 
     @staticmethod
     def check_embedding_model() -> Dict[str, Any]:
-        """Check embedding model health."""
-        # Placeholder - integrate with actual embedding model
         return {
             "healthy": True,
             "response_time_ms": 0,
@@ -127,11 +118,8 @@ class ServiceHealth:
 
 
 class MonitoringService:
-    """Service for collecting and reporting monitoring data."""
-
     @staticmethod
     def get_health_summary() -> Dict[str, Any]:
-        """Get overall health summary."""
         return {
             "system": {
                 "cpu": SystemMonitor.get_cpu_metrics(),
@@ -149,7 +137,6 @@ class MonitoringService:
 
     @staticmethod
     def get_metrics_snapshot() -> Dict[str, Any]:
-        """Get a metrics snapshot."""
         return {
             "timestamp": datetime.utcnow().isoformat(),
             "system": SystemMonitor.get_cpu_metrics(),

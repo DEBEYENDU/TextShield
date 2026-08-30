@@ -13,4 +13,5 @@ The engine NEVER classifies. It is independent of RAG, LLMs and the
 spam classifier; downstream phases (intent, behavior, decision,
 explainability) consume :class:`SemanticAnalysisResult`.
 """
+
 from __future__ import annotations

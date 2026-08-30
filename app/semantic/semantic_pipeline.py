@@ -17,6 +17,7 @@ Stages (all deterministic; no classification):
 Graceful degradation: empty or malformed inputs produce a valid result
 with ``unknown``/empty fields — never an exception.
 """
+
 from __future__ import annotations
 
 import re
@@ -49,60 +50,211 @@ _UNKNOWN = "unknown"
 # ================================================================= contexts
 _CONTEXT_LEXICONS: dict[str, list[str]] = {
     "banking": [
-        "bank", "bank account", "account balance", "savings", "atm", "debit card",
-        "credit card", "upi", "neft", "imps", "rtgs", "otp", "pin", "kyc",
-        "balance", "branch", "ifsc", "cheque", "statement", "transaction",
-        "bank details", "netbanking",
+        "bank",
+        "bank account",
+        "account balance",
+        "savings",
+        "atm",
+        "debit card",
+        "credit card",
+        "upi",
+        "neft",
+        "imps",
+        "rtgs",
+        "otp",
+        "pin",
+        "kyc",
+        "balance",
+        "branch",
+        "ifsc",
+        "cheque",
+        "statement",
+        "transaction",
+        "bank details",
+        "netbanking",
     ],
     "finance": [
-        "loan", "emi", "interest", "invest", "mutual fund", "sip", "insurance",
-        "credit score", "tax", "refund", "salary", "mortgage", "wallet",
-        "payment", "pay", "money transfer", "finance", "pre-approved", "crypto",
+        "loan",
+        "emi",
+        "interest",
+        "invest",
+        "mutual fund",
+        "sip",
+        "insurance",
+        "credit score",
+        "tax",
+        "refund",
+        "salary",
+        "mortgage",
+        "wallet",
+        "payment",
+        "pay",
+        "money transfer",
+        "finance",
+        "pre-approved",
+        "crypto",
     ],
     "shopping": [
-        "order", "delivery", "shipped", "track order", "discount", "coupon",
-        "cart", "checkout", "return", "refund", "invoice", "purchase", "buy",
-        "deal", "gift card", "out for delivery", "cod", "cash on delivery",
+        "order",
+        "delivery",
+        "shipped",
+        "track order",
+        "discount",
+        "coupon",
+        "cart",
+        "checkout",
+        "return",
+        "refund",
+        "invoice",
+        "purchase",
+        "buy",
+        "deal",
+        "gift card",
+        "out for delivery",
+        "cod",
+        "cash on delivery",
     ],
     "education": [
-        "exam", "admit card", "result", "college", "university", "school",
-        "course", "assignment", "scholarship", "fees", "syllabus", "hostel",
-        "attendance", "marks", "semester", "tuition",
+        "exam",
+        "admit card",
+        "result",
+        "college",
+        "university",
+        "school",
+        "course",
+        "assignment",
+        "scholarship",
+        "fees",
+        "syllabus",
+        "hostel",
+        "attendance",
+        "marks",
+        "semester",
+        "tuition",
     ],
     "employment": [
-        "job", "hiring", "interview", "resume", "cv", "offer letter", "hr",
-        "recruitment", "internship", "work from home", "vacancy", "salary",
-        "appointment", "employer", "candidate",
+        "job",
+        "hiring",
+        "interview",
+        "resume",
+        "cv",
+        "offer letter",
+        "hr",
+        "recruitment",
+        "internship",
+        "work from home",
+        "vacancy",
+        "salary",
+        "appointment",
+        "employer",
+        "candidate",
     ],
     "government": [
-        "aadhaar", "pan", "tax", "gst", "passport", "voter id", "government",
-        "subsidy", "election", "police", "court", "ration", "scheme", "epfo",
-        "ministry", "department",
+        "aadhaar",
+        "pan",
+        "tax",
+        "gst",
+        "passport",
+        "voter id",
+        "government",
+        "subsidy",
+        "election",
+        "police",
+        "court",
+        "ration",
+        "scheme",
+        "epfo",
+        "ministry",
+        "department",
     ],
     "healthcare": [
-        "hospital", "doctor", "appointment", "prescription", "medicine",
-        "clinic", "insurance claim", "ambulance", "lab report", "blood",
-        "vaccine", "covid", "diagnostic", "pharmacy", "health",
+        "hospital",
+        "doctor",
+        "appointment",
+        "prescription",
+        "medicine",
+        "clinic",
+        "insurance claim",
+        "ambulance",
+        "lab report",
+        "blood",
+        "vaccine",
+        "covid",
+        "diagnostic",
+        "pharmacy",
+        "health",
     ],
     "technology": [
-        "app", "software", "update", "download", "login", "password",
-        "verification code", "device", "account access", "browser", "version",
-        "patch", "link", "security alert", "session", "two-factor",
+        "app",
+        "software",
+        "update",
+        "download",
+        "login",
+        "password",
+        "verification code",
+        "device",
+        "account access",
+        "browser",
+        "version",
+        "patch",
+        "link",
+        "security alert",
+        "session",
+        "two-factor",
     ],
     "personal_communication": [
-        "hello", "hi", "how are you", "talk", "meeting", "lunch", "family",
-        "friend", "party", "birthday", "miss you", "call me", "message",
-        "chat", "catching up", "good morning", "good evening",
+        "hello",
+        "hi",
+        "how are you",
+        "talk",
+        "meeting",
+        "lunch",
+        "family",
+        "friend",
+        "party",
+        "birthday",
+        "miss you",
+        "call me",
+        "message",
+        "chat",
+        "catching up",
+        "good morning",
+        "good evening",
     ],
     "business": [
-        "invoice", "contract", "proposal", "client", "vendor", "purchase order",
-        "payment due", "business", "partnership", "agreement", "tender",
-        "meeting", "conference", "stakeholder", "revenue",
+        "invoice",
+        "contract",
+        "proposal",
+        "client",
+        "vendor",
+        "purchase order",
+        "payment due",
+        "business",
+        "partnership",
+        "agreement",
+        "tender",
+        "meeting",
+        "conference",
+        "stakeholder",
+        "revenue",
     ],
     "social_media": [
-        "instagram", "facebook", "whatsapp", "telegram", "follow", "like",
-        "subscribe", "channel", "viral", "dm", "tweet", "post", "hashtag",
-        "influencer", "reel", "story",
+        "instagram",
+        "facebook",
+        "whatsapp",
+        "telegram",
+        "follow",
+        "like",
+        "subscribe",
+        "channel",
+        "viral",
+        "dm",
+        "tweet",
+        "post",
+        "hashtag",
+        "influencer",
+        "reel",
+        "story",
     ],
 }
 
@@ -117,59 +269,174 @@ _CONTEXT_RE: dict[str, re.Pattern] = {
 # ================================================================== topics
 _TOPIC_LEXICONS: dict[str, list[str]] = {
     "Payment": [
-        "pay", "payment", "transfer", "send money", "upi", "neft", "imps",
-        "wallet", "due", "outstanding", "remit", "credited", "received money",
-        "paid", "settlement",
+        "pay",
+        "payment",
+        "transfer",
+        "send money",
+        "upi",
+        "neft",
+        "imps",
+        "wallet",
+        "due",
+        "outstanding",
+        "remit",
+        "credited",
+        "received money",
+        "paid",
+        "settlement",
     ],
     "Prize": [
-        "win", "won", "prize", "lottery", "lucky draw", "reward", "cash prize",
-        "jackpot", "winner",
+        "win",
+        "won",
+        "prize",
+        "lottery",
+        "lucky draw",
+        "reward",
+        "cash prize",
+        "jackpot",
+        "winner",
     ],
     "Investment": [
-        "invest", "investment", "mutual fund", "stock", "trading", "sip",
-        "returns", "profit", "crypto", "bitcoin", "nft", "shares", "dividend",
+        "invest",
+        "investment",
+        "mutual fund",
+        "stock",
+        "trading",
+        "sip",
+        "returns",
+        "profit",
+        "crypto",
+        "bitcoin",
+        "nft",
+        "shares",
+        "dividend",
     ],
     "Loan": [
-        "loan", "emi", "credit", "borrow", "interest rate", "sanction",
-        "lender", "mortgage", "personal loan", "pre-approved",
+        "loan",
+        "emi",
+        "credit",
+        "borrow",
+        "interest rate",
+        "sanction",
+        "lender",
+        "mortgage",
+        "personal loan",
+        "pre-approved",
     ],
     "Delivery": [
-        "delivery", "shipped", "dispatch", "courier", "parcel", "package",
-        "tracking", "delivered", "out for delivery", "delivery failed",
+        "delivery",
+        "shipped",
+        "dispatch",
+        "courier",
+        "parcel",
+        "package",
+        "tracking",
+        "delivered",
+        "out for delivery",
+        "delivery failed",
         "delivery date",
     ],
     "Verification": [
-        "verify", "verification", "otp", "confirm", "kyc", "validate",
-        "account confirm", "one-time password", "authenticate", "security code",
+        "verify",
+        "verification",
+        "otp",
+        "confirm",
+        "kyc",
+        "validate",
+        "account confirm",
+        "one-time password",
+        "authenticate",
+        "security code",
     ],
     "Account": [
-        "account", "login", "sign in", "password reset", "account blocked",
-        "account suspended", "credentials", "user id", "recover account",
+        "account",
+        "login",
+        "sign in",
+        "password reset",
+        "account blocked",
+        "account suspended",
+        "credentials",
+        "user id",
+        "recover account",
         "access restored",
     ],
     "Promotion": [
-        "offer", "discount", "sale", "deal", "promo", "coupon", "exclusive",
-        "limited period", "festive sale", "clearance", "special price",
+        "offer",
+        "discount",
+        "sale",
+        "deal",
+        "promo",
+        "coupon",
+        "exclusive",
+        "limited period",
+        "festive sale",
+        "clearance",
+        "special price",
     ],
     "Meeting": [
-        "meeting", "call", "schedule", "appointment", "conference", "webinar",
-        "sync up", "reschedule", "agenda", "catch up", "connect",
+        "meeting",
+        "call",
+        "schedule",
+        "appointment",
+        "conference",
+        "webinar",
+        "sync up",
+        "reschedule",
+        "agenda",
+        "catch up",
+        "connect",
     ],
     "Education": [
-        "exam", "admit card", "result", "course", "class", "tutorial",
-        "assignment", "study", "syllabus", "marks", "scholarship", "lecture",
+        "exam",
+        "admit card",
+        "result",
+        "course",
+        "class",
+        "tutorial",
+        "assignment",
+        "study",
+        "syllabus",
+        "marks",
+        "scholarship",
+        "lecture",
     ],
     "Support": [
-        "help", "support", "assistance", "query", "complaint", "ticket",
-        "troubleshooting", "customer care", "helpline", "issue resolved",
+        "help",
+        "support",
+        "assistance",
+        "query",
+        "complaint",
+        "ticket",
+        "troubleshooting",
+        "customer care",
+        "helpline",
+        "issue resolved",
     ],
     "Travel": [
-        "flight", "booking", "ticket", "trip", "hotel", "boarding pass",
-        "itinerary", "reservation", "cancellation", "cab", "travel",
+        "flight",
+        "booking",
+        "ticket",
+        "trip",
+        "hotel",
+        "boarding pass",
+        "itinerary",
+        "reservation",
+        "cancellation",
+        "cab",
+        "travel",
     ],
     "Communication": [
-        "message", "chat", "reply", "call", "contact", "talk", "conversation",
-        "dm", "ping", "message received", "missed call",
+        "message",
+        "chat",
+        "reply",
+        "call",
+        "contact",
+        "talk",
+        "conversation",
+        "dm",
+        "ping",
+        "message received",
+        "missed call",
     ],
 }
 
@@ -240,12 +507,44 @@ _LOCATION_SUFFIX_RE = re.compile(
     r"Basti|Chowk|Marg)\b"
 )
 _CITY_GAZETTEER = [
-    "mumbai", "delhi", "new delhi", "bengaluru", "bangalore", "hyderabad",
-    "chennai", "kolkata", "pune", "ahmedabad", "jaipur", "lucknow", "noida",
-    "gurugram", "gurgaon", "chandigarh", "bhopal", "indore", "patna",
-    "kathmandu", "dhaka", "colombo", "london", "new york", "san francisco",
-    "los angeles", "chicago", "singapore", "dubai", "toronto", "sydney",
-    "berlin", "paris", "tokyo", "seoul", "mexico city", "sao paulo", "nairobi",
+    "mumbai",
+    "delhi",
+    "new delhi",
+    "bengaluru",
+    "bangalore",
+    "hyderabad",
+    "chennai",
+    "kolkata",
+    "pune",
+    "ahmedabad",
+    "jaipur",
+    "lucknow",
+    "noida",
+    "gurugram",
+    "gurgaon",
+    "chandigarh",
+    "bhopal",
+    "indore",
+    "patna",
+    "kathmandu",
+    "dhaka",
+    "colombo",
+    "london",
+    "new york",
+    "san francisco",
+    "los angeles",
+    "chicago",
+    "singapore",
+    "dubai",
+    "toronto",
+    "sydney",
+    "berlin",
+    "paris",
+    "tokyo",
+    "seoul",
+    "mexico city",
+    "sao paulo",
+    "nairobi",
 ]
 _CITY_RE = re.compile(
     r"\b(" + "|".join(sorted(_CITY_GAZETTEER, key=len, reverse=True)) + r")\b",
@@ -253,15 +552,34 @@ _CITY_RE = re.compile(
 )
 
 _ENTITY_TYPES: tuple[str, ...] = (
-    "email", "url", "phone", "money", "date", "time",
-    "account_number", "tracking_number", "organization", "bank", "company",
-    "person", "location",
+    "email",
+    "url",
+    "phone",
+    "money",
+    "date",
+    "time",
+    "account_number",
+    "tracking_number",
+    "organization",
+    "bank",
+    "company",
+    "person",
+    "location",
 )
 
 _BANK_WORDS = {"bank", "banks"}
 _COMPANY_WORDS = {
-    "ltd", "limited", "corp", "corporation", "inc", "pvt", "company",
-    "industries", "technologies", "systems", "group",
+    "ltd",
+    "limited",
+    "corp",
+    "corporation",
+    "inc",
+    "pvt",
+    "company",
+    "industries",
+    "technologies",
+    "systems",
+    "group",
 }
 
 
@@ -386,14 +704,20 @@ class SemanticPipeline:
         # exact patterns (high confidence)
         for match in _EMAIL_RE.finditer(text):
             self._add_entity(
-                entities, etype="email", value=match.group(0),
-                normalized=match.group(0).lower(), confidence=0.95,
+                entities,
+                etype="email",
+                value=match.group(0),
+                normalized=match.group(0).lower(),
+                confidence=0.95,
             )
         for match in _URL_RE.finditer(text):
             raw = match.group(0).rstrip(".,;:!?)>]}")
             self._add_entity(
-                entities, etype="url", value=raw,
-                normalized=raw.rstrip("/").lower(), confidence=0.95,
+                entities,
+                etype="url",
+                value=raw,
+                normalized=raw.rstrip("/").lower(),
+                confidence=0.95,
             )
         for match in _PHONE_RE.finditer(text):
             raw = match.group(0)
@@ -401,46 +725,67 @@ class SemanticPipeline:
             if len(digits) < 7:
                 continue
             self._add_entity(
-                entities, etype="phone", value=raw, normalized=digits,
+                entities,
+                etype="phone",
+                value=raw,
+                normalized=digits,
                 confidence=0.92,
             )
         for match in _MONEY_RE.finditer(text):
             self._add_entity(
-                entities, etype="money", value=match.group(0),
+                entities,
+                etype="money",
+                value=match.group(0),
                 normalized=re.sub(r"\s+", "", match.group(0).lower()),
                 confidence=0.93,
             )
         for match in _DATE_RE.finditer(text):
-            self._add_entity(entities, etype="date", value=match.group(0),
-                             confidence=0.9)
+            self._add_entity(
+                entities, etype="date", value=match.group(0), confidence=0.9
+            )
         for match in _TIME_RE.finditer(text):
-            self._add_entity(entities, etype="time", value=match.group(0),
-                             confidence=0.9)
+            self._add_entity(
+                entities, etype="time", value=match.group(0), confidence=0.9
+            )
         for match in _ACCOUNT_RE.finditer(text):
             code = match.group(1)
-            if re.fullmatch(r"[A-Za-z0-9]{6,20}", code) and not re.fullmatch(
-                r"[0-9]{6,20}", code
-            ) or (code.isdigit() and len(code) >= 8):
+            if (
+                re.fullmatch(r"[A-Za-z0-9]{6,20}", code)
+                and not re.fullmatch(r"[0-9]{6,20}", code)
+                or (code.isdigit() and len(code) >= 8)
+            ):
                 self._add_entity(
-                    entities, etype="account_number", value=match.group(0),
-                    normalized=code.upper(), confidence=0.88,
+                    entities,
+                    etype="account_number",
+                    value=match.group(0),
+                    normalized=code.upper(),
+                    confidence=0.88,
                 )
         for match in _TRACKING_RE.finditer(text):
             code = match.group(1)
             if re.fullmatch(r"[A-Za-z0-9]{6,24}", code):
                 self._add_entity(
-                    entities, etype="tracking_number", value=match.group(0),
-                    normalized=code.upper(), confidence=0.88,
+                    entities,
+                    etype="tracking_number",
+                    value=match.group(0),
+                    normalized=code.upper(),
+                    confidence=0.88,
                 )
         for match in _UPS_TRACKING_RE.finditer(text):
             self._add_entity(
-                entities, etype="tracking_number", value=match.group(0),
-                normalized=match.group(0).upper(), confidence=0.92,
+                entities,
+                etype="tracking_number",
+                value=match.group(0),
+                normalized=match.group(0).upper(),
+                confidence=0.92,
             )
         for match in _FEDEX_TRACKING_RE.finditer(text):
             self._add_entity(
-                entities, etype="tracking_number", value=match.group(0),
-                normalized=match.group(0), confidence=0.85,
+                entities,
+                etype="tracking_number",
+                value=match.group(0),
+                normalized=match.group(0),
+                confidence=0.85,
             )
         # organization-like entities (medium confidence, case-sensitive)
         for match in _ORG_RE.finditer(text):
@@ -448,54 +793,81 @@ class SemanticPipeline:
             lower = name.lower()
             if any(w in lower for w in _BANK_WORDS):
                 self._add_entity(
-                    entities, etype="bank", value=name, normalized=lower,
+                    entities,
+                    etype="bank",
+                    value=name,
+                    normalized=lower,
                     confidence=0.8,
                 )
             elif any(w in lower for w in _COMPANY_WORDS):
                 self._add_entity(
-                    entities, etype="company", value=name, normalized=lower,
+                    entities,
+                    etype="company",
+                    value=name,
+                    normalized=lower,
                     confidence=0.75,
                 )
             else:
                 self._add_entity(
-                    entities, etype="organization", value=name,
-                    normalized=lower, confidence=0.7,
+                    entities,
+                    etype="organization",
+                    value=name,
+                    normalized=lower,
+                    confidence=0.7,
                 )
         # people (medium confidence)
         for match in _PERSON_RE.finditer(text):
             self._add_entity(
-                entities, etype="person", value=match.group(0).strip(),
-                normalized=match.group(0).strip().lower(), confidence=0.6,
+                entities,
+                etype="person",
+                value=match.group(0).strip(),
+                normalized=match.group(0).strip().lower(),
+                confidence=0.6,
             )
         for match in _GREETING_NAME_RE.finditer(text):
             self._add_entity(
-                entities, etype="person", value=match.group(1),
-                normalized=match.group(1).lower(), confidence=0.55,
+                entities,
+                etype="person",
+                value=match.group(1),
+                normalized=match.group(1).lower(),
+                confidence=0.55,
             )
         # locations (medium confidence)
         for match in _LOCATION_SUFFIX_RE.finditer(text):
             self._add_entity(
-                entities, etype="location", value=match.group(0).strip(),
-                normalized=match.group(0).strip().lower(), confidence=0.55,
+                entities,
+                etype="location",
+                value=match.group(0).strip(),
+                normalized=match.group(0).strip().lower(),
+                confidence=0.55,
             )
         for match in _CITY_RE.finditer(text):
             self._add_entity(
-                entities, etype="location", value=match.group(1),
-                normalized=match.group(1).lower(), confidence=0.65,
+                entities,
+                etype="location",
+                value=match.group(1),
+                normalized=match.group(1).lower(),
+                confidence=0.65,
             )
         # sender address may carry an organization/person
         if sender:
             email_match = _EMAIL_RE.search(sender)
             if email_match:
                 self._add_entity(
-                    entities, etype="email", value=email_match.group(0),
-                    normalized=email_match.group(0).lower(), confidence=0.9,
+                    entities,
+                    etype="email",
+                    value=email_match.group(0),
+                    normalized=email_match.group(0).lower(),
+                    confidence=0.9,
                 )
-            name_part = _EMAIL_RE.sub("", sender).strip(" <>\"").strip()
+            name_part = _EMAIL_RE.sub("", sender).strip(' <>"').strip()
             if name_part and re.search(r"[A-Za-z]", name_part):
                 self._add_entity(
-                    entities, etype="organization", value=name_part,
-                    normalized=name_part.lower(), confidence=0.5,
+                    entities,
+                    etype="organization",
+                    value=name_part,
+                    normalized=name_part.lower(),
+                    confidence=0.5,
                 )
         self._dedupe_phones(entities)
         return entities
@@ -529,9 +901,17 @@ class SemanticPipeline:
         entities: list[SemanticEntity],
     ) -> SemanticFeatures:
         lowered = text.lower()
-        counts = {t: sum(1 for e in entities if e.type == t) for t in (
-            "url", "email", "phone", "money", "date", "time",
-        )}
+        counts = {
+            t: sum(1 for e in entities if e.type == t)
+            for t in (
+                "url",
+                "email",
+                "phone",
+                "money",
+                "date",
+                "time",
+            )
+        }
         return SemanticFeatures(
             message_length=len(text),
             word_count=len(text.split()),
@@ -545,28 +925,52 @@ class SemanticPipeline:
             money_count=counts["money"],
             date_count=counts["date"],
             time_count=counts["time"],
-            has_request=bool(re.search(r"\b(please|kindly|request|need you to|"
-                                       r"require|asking you|urge)\b", lowered)),
-            has_offer=bool(re.search(r"\b(free|win|won|prize|offer|discount|"
-                                     r"exclusive|gift|reward|bonus|cashback)\b",
-                                     lowered)),
-            has_urgency=bool(re.search(r"\b(urgent|immediately|asap|hurry|"
-                                       r"deadline|expires?|final notice|"
-                                       r"within \d+ hours|act now)\b", lowered)),
-            has_financial_reference=bool(re.search(r"\b(bank|account|balance|"
-                                                   r"transfer|payment|loan|"
-                                                   r"emi|upi|wallet|refund|"
-                                                   r"invoice|salary|tax)\b",
-                                                   lowered)),
-            has_credential_request=bool(re.search(r"\b(password|passcode|otp|"
-                                                  r"pin|credential|login|"
-                                                  r"verify|verification|"
-                                                  r"aadhaar|ssn|pan)\b",
-                                                  lowered)),
+            has_request=bool(
+                re.search(
+                    r"\b(please|kindly|request|need you to|"
+                    r"require|asking you|urge)\b",
+                    lowered,
+                )
+            ),
+            has_offer=bool(
+                re.search(
+                    r"\b(free|win|won|prize|offer|discount|"
+                    r"exclusive|gift|reward|bonus|cashback)\b",
+                    lowered,
+                )
+            ),
+            has_urgency=bool(
+                re.search(
+                    r"\b(urgent|immediately|asap|hurry|"
+                    r"deadline|expires?|final notice|"
+                    r"within \d+ hours|act now)\b",
+                    lowered,
+                )
+            ),
+            has_financial_reference=bool(
+                re.search(
+                    r"\b(bank|account|balance|"
+                    r"transfer|payment|loan|"
+                    r"emi|upi|wallet|refund|"
+                    r"invoice|salary|tax)\b",
+                    lowered,
+                )
+            ),
+            has_credential_request=bool(
+                re.search(
+                    r"\b(password|passcode|otp|"
+                    r"pin|credential|login|"
+                    r"verify|verification|"
+                    r"aadhaar|ssn|pan)\b",
+                    lowered,
+                )
+            ),
             has_personal_information_request=bool(
-                re.search(r"\b(dob|date of birth|address|cvv|cvc|"
-                          r"card number|bank details|mother'?s name)\b",
-                          lowered)
+                re.search(
+                    r"\b(dob|date of birth|address|cvv|cvc|"
+                    r"card number|bank details|mother'?s name)\b",
+                    lowered,
+                )
             ),
         )
 
@@ -592,7 +996,9 @@ class SemanticPipeline:
         )
 
     # ------------------------------------------------------------- embeddings
-    def _embed(self, text: str, sentences: list[str], subject: str, body: str) -> dict[str, list]:
+    def _embed(
+        self, text: str, sentences: list[str], subject: str, body: str
+    ) -> dict[str, list]:
         payload: dict[str, list] = {}
         payload["message"] = self.embeddings.embed_one(text)
         payload["sentences"] = self.embeddings.embed(
@@ -633,12 +1039,16 @@ class SemanticPipeline:
         topics = self.extract_topics(full_text)
         entities = self.extract_entities(full_text, sender=resolved["sender"])
         features = self.compute_features(full_text, sentences, entities)
-        confidence = self._estimate_confidence(language_conf, contexts, topics, entities)
+        confidence = self._estimate_confidence(
+            language_conf, contexts, topics, entities
+        )
 
         embeddings: dict[str, list] = {}
         dimension = self.embeddings.dimension if include_embeddings else 0
         if include_embeddings:
-            embeddings = self._embed(normalized, sentences, resolved["subject"], resolved["body"])
+            embeddings = self._embed(
+                normalized, sentences, resolved["subject"], resolved["body"]
+            )
 
         return SemanticAnalysisResult(
             language=language,

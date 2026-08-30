@@ -1,4 +1,5 @@
 """Analytics repository: aggregate queries over ``analyses``."""
+
 from __future__ import annotations
 
 import sqlite3
@@ -7,16 +8,14 @@ from typing import Any
 
 def totals(conn: sqlite3.Connection) -> dict[str, Any]:
     """Total counts and risk/type/intent distributions."""
-    row = conn.execute(
-        """
+    row = conn.execute("""
         SELECT
             COUNT(*)                          AS total,
             COALESCE(SUM(classification = 'SPAM'), 0)  AS spam,
             COALESCE(SUM(classification = 'HAM'), 0)   AS ham,
             COALESCE(AVG(confidence), 0)      AS avg_conf
         FROM analyses
-        """
-    ).fetchone()
+        """).fetchone()
     risk = {
         r["risk_level"]: r["c"]
         for r in conn.execute(

@@ -12,6 +12,7 @@ This module is the *primary* classification authority. It never relies
 on the LLM or the RAG system, and it degrades to None (with a clear
 error) if the model files are missing.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -77,7 +78,9 @@ class SpamClassifier:
             if self.metadata_path.exists():
                 import json
 
-                self._metadata = json.loads(self.metadata_path.read_text(encoding="utf-8"))
+                self._metadata = json.loads(
+                    self.metadata_path.read_text(encoding="utf-8")
+                )
             logger.info("Classifier loaded (algorithm=%s)", self.algorithm_name)
             return True
         except Exception as exc:  # pragma: no cover - defensive

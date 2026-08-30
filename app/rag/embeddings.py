@@ -14,6 +14,7 @@ Two providers are supported:
 The provider is selected by the ``EMBEDDING_PROVIDER`` environment
 variable and is used consistently at build time and query time.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -34,8 +35,7 @@ class EmbeddingProvider(ABC):
 
     @property
     @abstractmethod
-    def dimension(self) -> int:
-        ...
+    def dimension(self) -> int: ...
 
     @abstractmethod
     def embed(self, texts: list[str]) -> np.ndarray:
@@ -50,7 +50,9 @@ class HashingEmbeddings(EmbeddingProvider):
 
     name = "hashing"
 
-    def __init__(self, dim: int = HASHING_DIM, ngrams: tuple[int, int] = HASHING_NGRAMS):
+    def __init__(
+        self, dim: int = HASHING_DIM, ngrams: tuple[int, int] = HASHING_NGRAMS
+    ):
         self._dim = dim
         self._ngrams = ngrams
 
@@ -69,12 +71,15 @@ class HashingEmbeddings(EmbeddingProvider):
                     gram = text[start : start + size]
                     if len(gram) < size:
                         break
-                    index = int(
-                        np.frombuffer(
-                            (gram + "\x01").encode("utf-8"),
-                            dtype=np.uint8,
-                        ).sum()
-                    ) % self._dim
+                    index = (
+                        int(
+                            np.frombuffer(
+                                (gram + "\x01").encode("utf-8"),
+                                dtype=np.uint8,
+                            ).sum()
+                        )
+                        % self._dim
+                    )
                     vectors[row, index] += 1.0
             norm = np.linalg.norm(vectors[row])
             if norm > 0:
@@ -112,7 +117,9 @@ class SentenceTransformerEmbeddings(EmbeddingProvider):
 
     def embed(self, texts: list[str]) -> np.ndarray:
         self._load()
-        return np.asarray(self._model.encode(texts, normalize_embeddings=True), dtype=np.float32)
+        return np.asarray(
+            self._model.encode(texts, normalize_embeddings=True), dtype=np.float32
+        )
 
 
 def create_embedding_provider(force: str | None = None) -> EmbeddingProvider:

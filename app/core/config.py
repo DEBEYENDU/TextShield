@@ -9,6 +9,7 @@ should import from the new modules directly.
 .. deprecated:: 2.0
     Import from ``app.core.settings`` instead.
 """
+
 from __future__ import annotations
 
 from app.core.features import FeatureFlags, features

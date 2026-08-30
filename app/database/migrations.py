@@ -5,6 +5,7 @@ a plain SQL string or a callable ``(conn) -> None`` (for guarded
 ALTERs that must check the current schema first). A version applied once
 is never re-applied. Never edit an existing migration; add a new one.
 """
+
 from __future__ import annotations
 
 import sqlite3
@@ -14,11 +15,15 @@ Statement = str | Callable[[sqlite3.Connection], None]
 
 
 def _column_exists(conn: sqlite3.Connection, table: str, column: str) -> bool:
-    cols = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+    cols = {
+        row["name"] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()
+    }
     return column in cols
 
 
-def _add_column(table: str, column: str, ddl: str) -> Callable[[sqlite3.Connection], None]:
+def _add_column(
+    table: str, column: str, ddl: str
+) -> Callable[[sqlite3.Connection], None]:
     def _apply(conn: sqlite3.Connection) -> None:
         if not _column_exists(conn, table, column):
             conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}")

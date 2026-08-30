@@ -12,6 +12,7 @@ History of the module:
 New code should depend on ``app.database.base`` + ``app.database.
 repositories`` directly instead of this module.
 """
+
 from __future__ import annotations
 
 from app.core.logging import get_logger
@@ -45,8 +46,12 @@ def query_history(
     init_db()
     filters = filters or {}
     allowed_columns = {
-        "timestamp", "input_type", "classification", "risk_level",
-        "confidence", "id",
+        "timestamp",
+        "input_type",
+        "classification",
+        "risk_level",
+        "confidence",
+        "id",
     }
     if order_by not in allowed_columns:
         order_by = "timestamp"

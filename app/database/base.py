@@ -6,6 +6,7 @@
   migrations.py`` and are applied in order, each in its own transaction,
   recorded in ``schema_migrations``.
 """
+
 from __future__ import annotations
 
 import sqlite3
@@ -61,15 +62,13 @@ def get_read_connection():
 
 def run_migrations(conn: sqlite3.Connection) -> list[str]:
     """Apply pending migrations; returns the applied migration names."""
-    conn.execute(
-        """
+    conn.execute("""
         CREATE TABLE IF NOT EXISTS schema_migrations (
             version    INTEGER PRIMARY KEY,
             name       TEXT NOT NULL,
             applied_at TEXT NOT NULL
         )
-        """
-    )
+        """)
     applied = {
         row["version"]
         for row in conn.execute("SELECT version FROM schema_migrations").fetchall()

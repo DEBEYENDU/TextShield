@@ -3,6 +3,7 @@
 Retrieval results are never fabricated: each hit carries the actual
 source document name, category, and the chunk text stored at build time.
 """
+
 from __future__ import annotations
 
 import time as _time
@@ -21,12 +22,10 @@ _STATUS_TTL_SECONDS = 5.0
 class RetrieverBase(ABC):
     @property
     @abstractmethod
-    def is_ready(self) -> bool:
-        ...
+    def is_ready(self) -> bool: ...
 
     @abstractmethod
-    def retrieve(self, text: str, top_k: int | None = None) -> list[dict]:
-        ...
+    def retrieve(self, text: str, top_k: int | None = None) -> list[dict]: ...
 
 
 class Retriever(RetrieverBase):
@@ -71,10 +70,13 @@ class Retriever(RetrieverBase):
             }
         except Exception:
             status = {
-                "ready": False, "backend": self.store.backend_name,
+                "ready": False,
+                "backend": self.store.backend_name,
                 "embedding_provider": self.provider.name,
-                "chunk_count": 0, "document_count": 0,
-                "categories": [], "built_at": None,
+                "chunk_count": 0,
+                "document_count": 0,
+                "categories": [],
+                "built_at": None,
             }
         self._status_cache = (now, status)
         return status

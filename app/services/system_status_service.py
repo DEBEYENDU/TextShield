@@ -1,4 +1,5 @@
 """System status service: lifecycle, health and status snapshots."""
+
 from __future__ import annotations
 
 import time
@@ -55,7 +56,11 @@ def readiness() -> dict[str, Any]:
         components = {"database": True, "migrations": True}
     except Exception as exc:  # pragma: no cover - defensive
         logger.error("Readiness probe failed: %s", exc)
-        return {"ready": False, "components": {"database": False}, "message": "Database unavailable"}
+        return {
+            "ready": False,
+            "components": {"database": False},
+            "message": "Database unavailable",
+        }
     return {"ready": True, "components": components, "message": "ready"}
 
 

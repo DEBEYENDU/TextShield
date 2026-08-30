@@ -8,6 +8,7 @@ Backends (in preference order):
 Both implement the same interface. The store is built by
 ``scripts/build_knowledge_base.py`` and is *not* rebuilt on app start.
 """
+
 from __future__ import annotations
 
 import json
@@ -50,8 +51,7 @@ class VectorStore(ABC):
 
     @property
     @abstractmethod
-    def count(self) -> int:
-        ...
+    def count(self) -> int: ...
 
     @abstractmethod
     def add(
@@ -60,8 +60,7 @@ class VectorStore(ABC):
         embeddings: np.ndarray,
         documents: list[str],
         metadatas: list[dict],
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @abstractmethod
     def query(self, embedding: np.ndarray, top_k: int = 4) -> list[dict]:
@@ -69,8 +68,7 @@ class VectorStore(ABC):
         ...
 
     @abstractmethod
-    def delete_all(self) -> None:
-        ...
+    def delete_all(self) -> None: ...
 
     def save_structure(self, info: dict) -> None:
         structure_file(self.path).write_text(
@@ -152,8 +150,12 @@ class SimpleVectorStore(VectorStore):
     def delete_all(self) -> None:
         self._ids, self._documents, self._metadatas = [], [], []
         self._embeddings = None
-        for file in (self.path / self.VECTORS_FILE, self.path / self.META_FILE,
-                     self.path / self.IDS_FILE, self.path / STRUCTURE_FILE):
+        for file in (
+            self.path / self.VECTORS_FILE,
+            self.path / self.META_FILE,
+            self.path / self.IDS_FILE,
+            self.path / STRUCTURE_FILE,
+        ):
             file.unlink(missing_ok=True)
 
     def _persist(self) -> None:

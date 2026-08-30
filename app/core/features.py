@@ -7,6 +7,7 @@ the response reflects the disabled state.
 
 Flags are resolved once at import time (consistent for the process).
 """
+
 from __future__ import annotations
 
 from app.core.settings import Settings, _get_bool

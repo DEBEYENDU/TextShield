@@ -15,7 +15,6 @@ from typing import Iterable, Sequence
 from app.semantic.semantic_models import SemanticAnalysisResult
 from app.semantic.semantic_pipeline import SemanticPipeline
 
-
 # ------------------------------------------------------------ primitives
 
 
@@ -44,7 +43,9 @@ def round_conf(value: float) -> float:
     return round(clamp(value), 4)
 
 
-def hit_confidence(hits: int, total_markers: int, base: float = 0.35, boost: float = 0.14) -> float:
+def hit_confidence(
+    hits: int, total_markers: int, base: float = 0.35, boost: float = 0.14
+) -> float:
     """Map marker hits to a confidence: base + boost * (hits/total)."""
     if hits <= 0 or total_markers <= 0:
         return 0.0
@@ -62,7 +63,9 @@ def unique(seq: Iterable[str], limit: int = 3) -> list[str]:
     return seen
 
 
-def regex_snippets(text: str, patterns: Sequence[re.Pattern], limit: int = 3) -> list[str]:
+def regex_snippets(
+    text: str, patterns: Sequence[re.Pattern], limit: int = 3
+) -> list[str]:
     """Collect unique matched snippets for a list of compiled regexes."""
     found: list[str] = []
     for pattern in patterns:
@@ -87,8 +90,11 @@ def requestive_ratio(context: "AnalysisContext") -> float:
     """Share of sentences that are questions or imperatives (0-1)."""
     total = context.semantic.semantic_features.sentence_count or 1
     return clamp(
-        (context.semantic.semantic_features.question_count
-         + context.semantic.semantic_features.imperative_count) / total
+        (
+            context.semantic.semantic_features.question_count
+            + context.semantic.semantic_features.imperative_count
+        )
+        / total
     )
 
 
@@ -138,7 +144,9 @@ class AnalysisContext:
         if not self.tokens:
             self.tokens = {
                 token.lower()
-                for token in re.findall(r"[A-Za-z0-9]+(?:['’-][A-Za-z0-9]+)*", self.normalized)
+                for token in re.findall(
+                    r"[A-Za-z0-9]+(?:['’-][A-Za-z0-9]+)*", self.normalized
+                )
             }
         if not self.lowercase:
             self.lowercase = self.normalized.lower()

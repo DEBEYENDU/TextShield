@@ -26,6 +26,7 @@ Weights are defined in ``app/core/config.py`` so the logic is
 configurable. Informational only - not legal, financial or security
 authority.
 """
+
 from __future__ import annotations
 
 from app.core.config import settings
@@ -77,9 +78,7 @@ def compute_risk(
         severity = indicator.get("severity", "low")
         weight = settings.RISK_INDICATOR_WEIGHTS.get(severity, 0.0)
         score += weight
-        factors.append(
-            f"Indicator '{indicator.get('indicator')}' ({severity})"
-        )
+        factors.append(f"Indicator '{indicator.get('indicator')}' ({severity})")
 
     # URL flags
     flagged = [u for u in urls if u.get("warnings")]
@@ -95,15 +94,21 @@ def compute_risk(
             factors.append(f"URL {url.get('url', '')[:40]} is shortened")
         if url.get("suspicious_chars"):
             score += settings.RISK_URL_HIGH_PATTERN
-            factors.append(f"URL {url.get('url', '')[:40]} contains suspicious characters")
+            factors.append(
+                f"URL {url.get('url', '')[:40]} contains suspicious characters"
+            )
 
     # confidence adjustment
     if classification == "SPAM" and confidence >= 0.8:
         score += settings.RISK_HIGH_CONF_BONUS
-        factors.append(f"High model confidence ({confidence * 100:.0f}%) in the SPAM result")
+        factors.append(
+            f"High model confidence ({confidence * 100:.0f}%) in the SPAM result"
+        )
     elif classification == "HAM" and confidence < 0.55:
         score += 10.0
-        factors.append(f"Low model confidence ({confidence * 100:.0f}%) in the HAM result")
+        factors.append(
+            f"Low model confidence ({confidence * 100:.0f}%) in the HAM result"
+        )
 
     # RAG evidence pointing at high-risk families
     for hit in rag_evidence:
@@ -123,9 +128,7 @@ def compute_risk(
     # CRITICAL: malicious intent + strong corroboration (RZ-03). A high raw
     # score alone can never reach CRITICAL - the intent signal is mandatory.
     critical_intents = {"credential_request", "money_transfer", "download_install"}
-    has_high_indicator = any(
-        i.get("severity") == "high" for i in indicators
-    )
+    has_high_indicator = any(i.get("severity") == "high" for i in indicators)
     has_flagged_url = any(u.get("warnings") for u in urls)
     if (
         classification == "SPAM"

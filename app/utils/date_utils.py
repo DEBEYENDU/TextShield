@@ -1,4 +1,5 @@
 """Date/time utilities: ISO-8601 UTC helpers."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -11,7 +12,9 @@ def utc_now() -> datetime:
 
 def utc_now_iso(include_seconds: bool = True) -> str:
     """ISO-8601 UTC timestamp string, seconds precision by default."""
-    return utc_now().isoformat(timespec="seconds" if include_seconds else "microseconds")
+    return utc_now().isoformat(
+        timespec="seconds" if include_seconds else "microseconds"
+    )
 
 
 def utc_now_ms() -> int:

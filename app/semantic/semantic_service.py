@@ -46,7 +46,10 @@ class SimilarityService:
         return math.sqrt(sum((x - y) ** 2 for x, y in zip(a, b)))
 
     def sentence_similarity(
-        self, text_a: str, text_b: str, embedding_service_: EmbeddingService | None = None
+        self,
+        text_a: str,
+        text_b: str,
+        embedding_service_: EmbeddingService | None = None,
     ) -> float:
         """Cosine similarity between embeddings of two texts.
 
@@ -62,9 +65,7 @@ class SimilarityService:
             tokens_b = set(text_b.lower().split())
             if not tokens_a and not tokens_b:
                 return 1.0
-            return round(
-                len(tokens_a & tokens_b) / len(tokens_a | tokens_b), 6
-            )
+            return round(len(tokens_a & tokens_b) / len(tokens_a | tokens_b), 6)
         return self.cosine_similarity(vec_a, vec_b)
 
 
@@ -109,8 +110,12 @@ class SemanticService:
             include_embeddings=include_embeddings,
         )
 
-    def analyze_sms(self, message: str, *, include_embeddings: bool = True) -> SemanticAnalysisResult:
-        return self.analyze_message(message, message_type="sms", include_embeddings=include_embeddings)
+    def analyze_sms(
+        self, message: str, *, include_embeddings: bool = True
+    ) -> SemanticAnalysisResult:
+        return self.analyze_message(
+            message, message_type="sms", include_embeddings=include_embeddings
+        )
 
     def analyze_email(
         self,
@@ -131,11 +136,19 @@ class SemanticService:
             include_embeddings=include_embeddings,
         )
 
-    def analyze_text(self, message: str, *, include_embeddings: bool = True) -> SemanticAnalysisResult:
-        return self.analyze_message(message, message_type="text", include_embeddings=include_embeddings)
+    def analyze_text(
+        self, message: str, *, include_embeddings: bool = True
+    ) -> SemanticAnalysisResult:
+        return self.analyze_message(
+            message, message_type="text", include_embeddings=include_embeddings
+        )
 
-    def analyze_chat(self, message: str, *, include_embeddings: bool = True) -> SemanticAnalysisResult:
-        return self.analyze_message(message, message_type="chat", include_embeddings=include_embeddings)
+    def analyze_chat(
+        self, message: str, *, include_embeddings: bool = True
+    ) -> SemanticAnalysisResult:
+        return self.analyze_message(
+            message, message_type="chat", include_embeddings=include_embeddings
+        )
 
     def batch_analyze(
         self,
@@ -146,7 +159,9 @@ class SemanticService:
         """Analyze ``(message, message_type)`` pairs, embeddings disabled by
         default for throughput."""
         return [
-            self.analyze_message(text, message_type=msg_type, include_embeddings=include_embeddings)
+            self.analyze_message(
+                text, message_type=msg_type, include_embeddings=include_embeddings
+            )
             for text, msg_type in messages
         ]
 

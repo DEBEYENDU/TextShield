@@ -1,4 +1,5 @@
 """Route module: system health, readiness, version, config and status."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends

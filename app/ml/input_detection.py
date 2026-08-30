@@ -4,6 +4,7 @@ The UI declares an explicit input type, but the pipeline also supports
 pasting a raw email (header + body) which is parsed with the stdlib
 ``email`` package so subject/sender/body are extracted automatically.
 """
+
 from __future__ import annotations
 
 from email import message_from_string
@@ -33,9 +34,11 @@ def _decode(value: str) -> str:
         return ""
     parts = decode_header(value)
     return "".join(
-        text.decode(encoding or "utf-8", errors="replace")
-        if isinstance(text, bytes)
-        else text
+        (
+            text.decode(encoding or "utf-8", errors="replace")
+            if isinstance(text, bytes)
+            else text
+        )
         for text, encoding in parts
     )
 

@@ -8,6 +8,7 @@ Security principles
 * Language is deliberately cautious: "potentially suspicious pattern"
   rather than claims of maliciousness.
 """
+
 from __future__ import annotations
 
 import ipaddress
@@ -17,43 +18,164 @@ from urllib.parse import urlparse
 from app.ml.preprocess import extract_urls
 
 SHORTENERS = {
-    "bit.ly", "tinyurl.com", "goo.gl", "t.co", "is.gd", "ow.ly", "buff.ly",
-    "rebrand.ly", "cutt.ly", "shorturl.at", "rb.gy", "s.id", "short.gy",
-    "zv.gd", "chilp.it", "tny.im",
+    "bit.ly",
+    "tinyurl.com",
+    "goo.gl",
+    "t.co",
+    "is.gd",
+    "ow.ly",
+    "buff.ly",
+    "rebrand.ly",
+    "cutt.ly",
+    "shorturl.at",
+    "rb.gy",
+    "s.id",
+    "short.gy",
+    "zv.gd",
+    "chilp.it",
+    "tny.im",
 }
 
 SUSPICIOUS_TLDS = {
-    "xyz", "top", "click", "link", "gift", "zip", "win", "men", "loan",
-    "download", "review", "country", "kim", "icu", "cyou", "work",
-    "party", "buzz", "live", "press", "site", "online", "tech", "club",
-    "tk", "ga", "ml", "cf", "gq", "buzz", "rest", "monster",
+    "xyz",
+    "top",
+    "click",
+    "link",
+    "gift",
+    "zip",
+    "win",
+    "men",
+    "loan",
+    "download",
+    "review",
+    "country",
+    "kim",
+    "icu",
+    "cyou",
+    "work",
+    "party",
+    "buzz",
+    "live",
+    "press",
+    "site",
+    "online",
+    "tech",
+    "club",
+    "tk",
+    "ga",
+    "ml",
+    "cf",
+    "gq",
+    "buzz",
+    "rest",
+    "monster",
 }
 
 # Brand and trust words commonly borrowed by lookalike domains.
 BRAND_WORDS = {
-    "paypal", "icici", "hdfc", "sbi", "axis", "kotak", "yesbank", "amazon",
-    "flipkart", "google", "microsoft", "netflix", "gmail", "apple", "facebook",
-    "instagram", "whatsapp", "paytm", "phonepe", "airtel", "jio", "vodafone",
-    "fedex", "dhl", "swiggy", "zomato", "irctc", "uber", "ola", "linkedin",
-    "adobe", "twitter", "bank", "banking", "secure", "support", "helpline",
+    "paypal",
+    "icici",
+    "hdfc",
+    "sbi",
+    "axis",
+    "kotak",
+    "yesbank",
+    "amazon",
+    "flipkart",
+    "google",
+    "microsoft",
+    "netflix",
+    "gmail",
+    "apple",
+    "facebook",
+    "instagram",
+    "whatsapp",
+    "paytm",
+    "phonepe",
+    "airtel",
+    "jio",
+    "vodafone",
+    "fedex",
+    "dhl",
+    "swiggy",
+    "zomato",
+    "irctc",
+    "uber",
+    "ola",
+    "linkedin",
+    "adobe",
+    "twitter",
+    "bank",
+    "banking",
+    "secure",
+    "support",
+    "helpline",
 }
 
 # Hosts that legitimately own these brand names (exact or suffix match).
 BRAND_DOMAINS = {
-    "paypal.com", "icicibank.com", "hdfcbank.com", "onlinesbi.sbi", "axisbank.com",
-    "kotak.com", "yesbank.in", "amazon.in", "amazon.com", "flipkart.com",
-    "google.com", "microsoft.com", "netflix.com", "gmail.com", "apple.com",
-    "facebook.com", "instagram.com", "whatsapp.com", "paytm.com", "phonepe.com",
-    "airtel.in", "jio.com", "vodafone.in", "fedex.com", "dhl.com", "swiggy.com",
-    "zomato.com", "irctc.co.in", "uber.com", "olacabs.com", "linkedin.com",
-    "adobe.com", "twitter.com", "x.com",
+    "paypal.com",
+    "icicibank.com",
+    "hdfcbank.com",
+    "onlinesbi.sbi",
+    "axisbank.com",
+    "kotak.com",
+    "yesbank.in",
+    "amazon.in",
+    "amazon.com",
+    "flipkart.com",
+    "google.com",
+    "microsoft.com",
+    "netflix.com",
+    "gmail.com",
+    "apple.com",
+    "facebook.com",
+    "instagram.com",
+    "whatsapp.com",
+    "paytm.com",
+    "phonepe.com",
+    "airtel.in",
+    "jio.com",
+    "vodafone.in",
+    "fedex.com",
+    "dhl.com",
+    "swiggy.com",
+    "zomato.com",
+    "irctc.co.in",
+    "uber.com",
+    "olacabs.com",
+    "linkedin.com",
+    "adobe.com",
+    "twitter.com",
+    "x.com",
 }
 
 SUSPICIOUS_PATH_WORDS = {
-    "login", "verify", "verification", "confirm", "update", "account",
-    "security", "bank", "paypal", "secure", "unlock", "signin", "wallet",
-    "reward", "prize", "gift", "claim", "bonus", "promo", "track", "refund",
-    "billing", "invoice", "otp", "kyc",
+    "login",
+    "verify",
+    "verification",
+    "confirm",
+    "update",
+    "account",
+    "security",
+    "bank",
+    "paypal",
+    "secure",
+    "unlock",
+    "signin",
+    "wallet",
+    "reward",
+    "prize",
+    "gift",
+    "claim",
+    "bonus",
+    "promo",
+    "track",
+    "refund",
+    "billing",
+    "invoice",
+    "otp",
+    "kyc",
 }
 
 URL_RE = re.compile(r"https?://[^\s]+|www\.[^\s]+", re.IGNORECASE)
@@ -110,7 +232,9 @@ class UrlAnalysis:
         tld = self._tld(host)
         if tld in SUSPICIOUS_TLDS:
             self.suspicious_tld = True
-            self.pattern_warnings.append(f"Potentially suspicious top-level domain (.{tld})")
+            self.pattern_warnings.append(
+                f"Potentially suspicious top-level domain (.{tld})"
+            )
         if tld and host.count(".") < 1:
             self.suspicious_tld = True
             self.pattern_warnings.append("Unusual one-part domain")
@@ -151,7 +275,11 @@ class UrlAnalysis:
                 return False
         host_body = host.split(".")[:-1]
         for word in BRAND_WORDS:
-            if word in host_body or host.startswith(word + "-") or "-" + word + "-" in host:
+            if (
+                word in host_body
+                or host.startswith(word + "-")
+                or "-" + word + "-" in host
+            ):
                 return True
         return False
 

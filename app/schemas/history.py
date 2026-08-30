@@ -1,4 +1,5 @@
 """Pydantic models: history contract."""
+
 from __future__ import annotations
 
 from typing import Literal

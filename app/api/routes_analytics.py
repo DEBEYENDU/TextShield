@@ -34,6 +34,7 @@ async def get_metrics_summary():
             return {"message": "No metrics data available"}
 
         from analytics.statistics import StatisticsEngine
+
         stats = StatisticsEngine()
 
         return {

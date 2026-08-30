@@ -1,4 +1,5 @@
 """Models service: ML model availability and metadata."""
+
 from __future__ import annotations
 
 import json
@@ -28,7 +29,9 @@ def get_model_info() -> dict[str, Any]:
     metrics = None
     if settings.MODEL_METRICS_PATH.exists():
         try:
-            metrics = json.loads(settings.MODEL_METRICS_PATH.read_text(encoding="utf-8"))
+            metrics = json.loads(
+                settings.MODEL_METRICS_PATH.read_text(encoding="utf-8")
+            )
         except (OSError, json.JSONDecodeError):
             metrics = None
     return {

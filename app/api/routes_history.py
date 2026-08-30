@@ -1,4 +1,5 @@
 """Route module: history endpoints (list / delete / clear)."""
+
 from __future__ import annotations
 
 from typing import Literal
@@ -42,7 +43,9 @@ def list_history(
 
 
 @router.delete("/{entry_id}")
-def delete_entry(entry_id: int, registry: ServiceRegistry = Depends(get_request_registry)) -> dict:
+def delete_entry(
+    entry_id: int, registry: ServiceRegistry = Depends(get_request_registry)
+) -> dict:
     """Delete a single history entry."""
     if not registry.get("history").delete_entry(entry_id):
         raise NotFoundError("History entry not found")
@@ -50,7 +53,9 @@ def delete_entry(entry_id: int, registry: ServiceRegistry = Depends(get_request_
 
 
 @router.delete("")
-def clear_all_history(registry: ServiceRegistry = Depends(get_request_registry)) -> dict:
+def clear_all_history(
+    registry: ServiceRegistry = Depends(get_request_registry),
+) -> dict:
     """Delete all history entries."""
     deleted = registry.get("history").clear_all()
     logger.info("History cleared: %d rows deleted", deleted)

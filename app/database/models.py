@@ -4,6 +4,7 @@ The on-disk schema is managed by migrations (``app/database/
 migrations.py``); this module holds the plain dataclass used to
 construct history records.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

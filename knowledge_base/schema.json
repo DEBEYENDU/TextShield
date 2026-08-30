@@ -1,0 +1,132 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Knowledge Base Document Schema",
+  "type": "object",
+  "required": [
+    "title",
+    "category",
+    "subcategory",
+    "summary",
+    "description",
+    "typical_scenario",
+    "intent",
+    "behavior",
+    "requested_actions",
+    "manipulation_techniques",
+    "common_indicators",
+    "legitimate_alternatives",
+    "false_positives",
+    "false_negatives",
+    "real_world_examples",
+    "recommendations",
+    "tags",
+    "version",
+    "last_updated",
+    "source_credibility",
+    "language",
+    "confidence"
+  ],
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Title of the knowledge document"
+    },
+    "category": {
+      "type": "string",
+      "description": "High-level category (e.g., scams, legitimate, behavioral_patterns)"
+    },
+    "subcategory": {
+      "type": "string",
+      "description": "Specific subcategory within the category"
+    },
+    "summary": {
+      "type": "string",
+      "description": "Brief summary of the document content (1-2 sentences)"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of the topic"
+    },
+    "typical_scenario": {
+      "type": "string",
+      "description": "Typical scenario where this pattern occurs"
+    },
+    "intent": {
+      "type": "string",
+      "description": "The intent behind the communication pattern"
+    },
+    "behavior": {
+      "type": "string",
+      "description": "Typical behavior associated with the pattern"
+    },
+    "requested_actions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Actions requested in the communication"
+    },
+    "manipulation_techniques": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Manipulation techniques used in the pattern"
+    },
+    "common_indicators": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Common indicators of the pattern"
+    },
+    "legitimate_alternatives": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Legitimate alternatives to the pattern"
+    },
+    "false_positives": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Situations that may be flagged as this pattern but are legitimate"
+    },
+    "false_negatives": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Situations of this pattern that may be missed"
+    },
+    "real_world_examples": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Real-world examples of the pattern"
+    },
+    "recommendations": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Recommendations for handling the pattern"
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Tags for categorization and search"
+    },
+    "version": {
+      "type": "string",
+      "description": "Document version number"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the document was last updated (YYYY-MM-DD)"
+    },
+    "source_credibility": {
+      "type": "string",
+      "description": "Credibility source of the information"
+    },
+    "language": {
+      "type": "string",
+      "description": "Language code (e.g., en-US)"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Confidence score (0.0 to 1.0)"
+    }
+  },
+  "additionalProperties": false
+}

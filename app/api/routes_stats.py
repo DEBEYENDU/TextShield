@@ -1,4 +1,5 @@
 """Route module: statistics and model information."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends

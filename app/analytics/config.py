@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, List, Optional
 
 from dataclasses import dataclass, field
 
@@ -37,7 +37,9 @@ class AnalyticsConfig:
     log_analysis_execution: bool = True
 
     # Reporting
-    export_formats: List[str] = field(default_factory=lambda: ["json", "csv", "markdown"])
+    export_formats: List[str] = field(
+        default_factory=lambda: ["json", "csv", "markdown"]
+    )
     include_charts_in_reports: bool = True
 
     def to_dict(self) -> Dict[str, Any]:

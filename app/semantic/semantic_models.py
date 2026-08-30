@@ -8,6 +8,7 @@ Determinism: every field below is derived deterministically from the
 input text (plus, optionally, cached embeddings). No probability of
 spam is ever estimated by this engine.
 """
+
 from __future__ import annotations
 
 from typing import Any, Literal
@@ -131,6 +132,9 @@ class SemanticAnalysisResult(BaseModel):
     embedding_provider: str = Field(default="")
     engine_version: str = Field(default="1.0.0")
     normalized_text: str = Field(
-        default="", description="Canonically normalized full text (reused by later engines)"
+        default="",
+        description="Canonically normalized full text (reused by later engines)",
     )
-    message_preview: str = Field(default="", description="Truncated, safe preview for logs")
+    message_preview: str = Field(
+        default="", description="Truncated, safe preview for logs"
+    )

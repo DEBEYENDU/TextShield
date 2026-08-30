@@ -9,6 +9,7 @@ Modules:
                   risk weights, thresholds)
 * ``load_settings`` - explicit factory used by the DI container and tests
 """
+
 from __future__ import annotations
 
 import os
@@ -83,9 +84,7 @@ class Settings:
     # Semantic Understanding Engine (Phase 5).
     # Independent of RAG/LLM: its own embedder and caches.
     SEMANTIC_ENABLED: bool = _get_bool("SEMANTIC_ENABLED", True)
-    SEMANTIC_EMBEDDING_MODEL: str = _get(
-        "SEMANTIC_EMBEDDING_MODEL", "all-MiniLM-L6-v2"
-    )
+    SEMANTIC_EMBEDDING_MODEL: str = _get("SEMANTIC_EMBEDDING_MODEL", "all-MiniLM-L6-v2")
     SEMANTIC_EMBEDDING_DIMENSION: int = _get_int("SEMANTIC_EMBEDDING_DIMENSION", 384)
     SEMANTIC_CACHE_SIZE: int = _get_int("SEMANTIC_CACHE_SIZE", 512)
     SEMANTIC_BATCH_SIZE: int = _get_int("SEMANTIC_BATCH_SIZE", 16)
@@ -97,15 +96,9 @@ class Settings:
     # Intent & Behavior Analysis Engine (Phase 6).
     # Deterministic, configurable thresholds. No classification.
     INTENT_ENABLED: bool = _get_bool("INTENT_ENABLED", True)
-    INTENT_CONFIDENCE_THRESHOLD: float = _get_float(
-        "INTENT_CONFIDENCE_THRESHOLD", 0.35
-    )
-    INTENT_BEHAVIOR_THRESHOLD: float = _get_float(
-        "INTENT_BEHAVIOR_THRESHOLD", 0.30
-    )
-    INTENT_URGENCY_THRESHOLD: float = _get_float(
-        "INTENT_URGENCY_THRESHOLD", 0.30
-    )
+    INTENT_CONFIDENCE_THRESHOLD: float = _get_float("INTENT_CONFIDENCE_THRESHOLD", 0.35)
+    INTENT_BEHAVIOR_THRESHOLD: float = _get_float("INTENT_BEHAVIOR_THRESHOLD", 0.30)
+    INTENT_URGENCY_THRESHOLD: float = _get_float("INTENT_URGENCY_THRESHOLD", 0.30)
     INTENT_MAX_INTENTS: int = _get_int("INTENT_MAX_INTENTS", 4)
 
     LLM_PROVIDER: str = _get("LLM_PROVIDER", "ollama").lower()

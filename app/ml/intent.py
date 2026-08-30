@@ -21,6 +21,7 @@ The detector assigns one of eight machine-readable intent classes:
 The output is ``{"label", "description", "evidence"}`` where ``evidence``
 is the matched text snippet, so intent remains auditable like indicators.
 """
+
 from __future__ import annotations
 
 import re

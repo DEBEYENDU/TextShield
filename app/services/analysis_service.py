@@ -17,6 +17,7 @@ Failure policy: if RAG or LLM are unavailable the analysis still
 completes with basic classification, confidence and indicators.
 A missing ML model raises ``ServiceUnavailableError`` (HTTP 503).
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -89,8 +90,7 @@ def analyze(request: AnalyzeRequest, store_history: bool = True) -> dict:
             # raw email lives in `message` - parse headers/subject/body
             parsed_email = parse_raw_email(request.message)
             combined_text = " ".join(
-                part for part in (parsed_email["subject"], parsed_email["body"])
-                if part
+                part for part in (parsed_email["subject"], parsed_email["body"]) if part
             ).strip()
             subject_text = parsed_email["subject"]
             sender = parsed_email["sender"]
@@ -150,7 +150,11 @@ def analyze(request: AnalyzeRequest, store_history: bool = True) -> dict:
         logger.info("RAG not ready - continuing without knowledge evidence")
 
     risk = compute_risk(
-        prediction.label, prediction.probability, indicators, urls, rag_evidence,
+        prediction.label,
+        prediction.probability,
+        indicators,
+        urls,
+        rag_evidence,
         intent=intent,
     )
 
@@ -207,16 +211,25 @@ def analyze(request: AnalyzeRequest, store_history: bool = True) -> dict:
     elapsed = round(time.perf_counter() - started, 3)
     logger.info(
         "analysis complete: %s prob=%.3f risk=%s in %.3fs (explanation=%s, rag=%s)",
-        prediction.label, prediction.probability, risk["level"],
-        elapsed, explanation_result["source"],
+        prediction.label,
+        prediction.probability,
+        risk["level"],
+        elapsed,
+        explanation_result["source"],
         "on" if rag_evidence else "off",
     )
     return result
 
 
 def _store_history(
-    request: AnalyzeRequest, combined_text: str, label: str, confidence: float,
-    risk_level: str, risk_score: float, intent: dict, effective_type: str,
+    request: AnalyzeRequest,
+    combined_text: str,
+    label: str,
+    confidence: float,
+    risk_level: str,
+    risk_score: float,
+    intent: dict,
+    effective_type: str,
 ) -> int:
     """Persist a history row. Message content is hashed, not stored, by default."""
     preview = None

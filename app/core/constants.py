@@ -4,6 +4,7 @@ Central location for the fixed values that used to be scattered across
 modules (risk levels, intent labels, severity ordering, limits). Risk
 engine *weights* remain in settings; these are structural constants.
 """
+
 from __future__ import annotations
 
 # ------------------------------------------------------------- classification

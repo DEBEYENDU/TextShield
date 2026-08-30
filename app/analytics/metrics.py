@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Dict, Any, List, Optional
-from datetime import datetime, timedelta
-from collections import defaultdict, Counter
-import json
+
+from .config import AnalyticsConfig
 
 
 class MetricsRecord:
@@ -32,6 +32,7 @@ class MetricsRecord:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "MetricsRecord":
         from datetime import datetime
+
         return cls(
             timestamp=datetime.fromisoformat(data["timestamp"]),
             metrics=data["metrics"],
@@ -52,17 +53,13 @@ class MetricsSummary:
         self.time_range = time_range
 
     def count_by_type(self) -> Dict[str, int]:
+        from collections import Counter
+
         counts = Counter(r.type for r in self.records)
         return dict(counts)
 
-    def count_in_range(
-        self, start: datetime, end: datetime
-    ) -> int:
-        return sum(
-            1
-            for r in self.records
-            if start <= r.timestamp <= end
-        )
+    def count_in_range(self, start: datetime, end: datetime) -> int:
+        return sum(1 for r in self.records if start <= r.timestamp <= end)
 
     def average(self, key: str) -> Optional[float]:
         values = [
@@ -98,7 +95,7 @@ class MetricsEngine:
     def __init__(self, config: Optional[AnalyticsConfig] = None):
         self.config = config or AnalyticsConfig()
         self._records: List[MetricsRecord] = []
-        self._index: Dict[str, List[MetricsRecord]] = defaultdict(list)
+        self._index: Dict[str, List[MetricsRecord]] = {}
 
     def record(
         self,
@@ -108,16 +105,19 @@ class MetricsEngine:
     ):
         """Add a new metrics record."""
         from datetime import datetime, timezone
+
         timestamp = datetime.now(timezone.utc)
         record = MetricsRecord(timestamp, metrics, record_type, metadata)
         self._records.append(record)
+        if record_type not in self._index:
+            self._index[record_type] = []
         self._index[record_type].append(record)
 
         # Enforce retention policy
         if len(self._records) > self.config.max_history_entries:
-            # Remove oldest record
-            removed = self._records.pop(0)
-            self._index[removed.type].remove(removed)
+            self._records.pop(0)
+            if record_type in self._index:
+                self._index[record_type].pop(0)
 
     def get_records(self, record_type: Optional[str] = None) -> List[MetricsRecord]:
         """Get records, optionally filtered by type."""
@@ -135,6 +135,7 @@ class MetricsEngine:
     ) -> List[MetricsRecord]:
         """Get records from the last N minutes."""
         from datetime import datetime, timedelta, timezone
+
         cutoff = datetime.now(timezone.utc) - timedelta(minutes=minutes)
         all_records = self.get_records(record_type)
         return [r for r in all_records if r.timestamp >= cutoff]
@@ -143,70 +144,58 @@ class MetricsEngine:
         """Export records in the specified format."""
         records = self.get_records()
         if format_name == "json":
-            return json.dumps([r.to_dict() for r in records], indent=2)
+            return self._json_export(records)
         elif format_name == "csv":
-            # Simple CSV export
-            if not records:
-                return "timestamp,type,metrics\n"
-            lines = ["timestamp,type,metrics"]
-            for r in records:
-                metrics_str = json.dumps(r.metrics)
-                lines.append(f"{r.timestamp.isoformat()},{r.type},{metrics_str}")
-            return "\n".join(lines)
+            return self._csv_export(records)
         elif format_name == "markdown":
-            markdown = "# Metrics Export\n\n"
-            markdown += f"- Records: {len(records)}\n"
-            markdown += f"- Type: {records[0].type if records else 'all'}\n"
-            markdown += "\n---\n\n"
-            markdown += json.dumps([r.to_dict() for r in records], indent=2)
-            return markdown
+            return self._markdown_export(records)
+        return self._json_export(records)
+
+    def _json_export(self, records: List[MetricsRecord]) -> str:
+        import json
+
         return json.dumps([r.to_dict() for r in records], indent=2)
 
+    def _csv_export(self, records: List[MetricsRecord]) -> str:
+        import csv
+        import io
 
-# Predefined metric keys
+        output = io.StringIO()
+        writer = csv.writer(output)
+        if records:
+            writer.writerow(["timestamp", "type", "metrics"])
+            for r in records:
+                writer.writerow([r.timestamp.isoformat(), r.type, r.metrics])
+        return output.getvalue()
+
+    def _markdown_export(self, records: List[MetricsRecord]) -> str:
+        markdown = "# Metrics Export\n\n"
+        markdown += f"- Records: {len(records)}\n"
+        markdown += f"- Type: {records[0].type if records else 'all'}\n"
+        markdown += "\n---\n\n"
+        markdown += self._json_export(records)
+        return markdown
+
+
 class MetricKeys:
     """Predefined metric key constants."""
 
-    # Analysis metrics
     ANALYSIS_CONFIDENCE = "analysis_confidence"
     ANALYSIS_RISK_SCORE = "analysis_risk_score"
     ANALYSIS_PROCESSING_TIME = "analysis_processing_time"
     ANALYSIS_CLASSIFICATION = "analysis_classification"
     ANALYSIS_RISK_LEVEL = "analysis_risk_level"
-
-    # Model metrics
     MODEL_CONFIDENCE = "model_confidence"
     MODEL_LATENCY = "model_latency"
-    MODEL_SUCCESS_RATE = "model_success_rate"
-    MODEL_FAILURE_RATE = "model_failure_rate"
-
-    # RAG metrics
-    RAG_RETRIEVAL_CONFIDENCE = "rag_retrieval_confidence"
-    RAG_AVERAGE_SIMILARITY = "rag_average_similarity"
-    RAG_CONTEXT_SIZE = "rag_context_size"
-    RAG_LATENCY = "rag_latency"
-
-    # Decision metrics
-    DECISION_CONFIDENCE_DISTRIBUTION = "decision_confidence_distribution"
-    DECISION_RISK_DISTRIBUTION = "decision_risk_distribution"
-    DECISION_EVIDENCE_AGREEMENT = "decision_evidence_agreement"
-    DECISION_LLM_CONTRIBUTION = "decision_llm_contribution"
-    DECISION_ML_CONTRIBUTION = "decision_ml_contribution"
-
-    # System metrics
     SYSTEM_CPU_USAGE = "system_cpu_usage"
     SYSTEM_MEMORY_USAGE = "system_memory_usage"
-    SYSTEM_DISK_USAGE = "system_disk_usage"
-    SYSTEM_API_LATENCY = "system_api_latency"
-    SYSTEM_REQUEST_THROUGHPUT = "system_request_throughput"
-    SYSTEM_ERROR_COUNT = "system_error_count"
 
 
 # Global metrics engine instance
-_metrics_engine: Optional[MetricsEngine] = None
+_metrics_engine: Optional["MetricsEngine"] = None
 
 
-def get_metrics_engine() -> MetricsEngine:
+def get_metrics_engine() -> "MetricsEngine":
     """Get the global metrics engine instance."""
     global _metrics_engine
     if _metrics_engine is None:

@@ -1,4 +1,5 @@
 """File system utilities: safe path handling, JSON I/O, atomic writes."""
+
 from __future__ import annotations
 
 import json
@@ -48,4 +49,7 @@ def is_within(base: Path | str, candidate: Path | str) -> bool:
     """True when ``candidate`` resolves inside ``base``."""
     base_resolved = Path(base).resolve()
     candidate_resolved = Path(candidate).resolve()
-    return candidate_resolved == base_resolved or base_resolved in candidate_resolved.parents
+    return (
+        candidate_resolved == base_resolved
+        or base_resolved in candidate_resolved.parents
+    )

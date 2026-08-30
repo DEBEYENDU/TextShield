@@ -13,6 +13,7 @@ Wraps Sentence Transformers behind a small, swappable interface:
 The service is independent of RAG: it has its own model handle, cache
 and fallback path.
 """
+
 from __future__ import annotations
 
 import hashlib
