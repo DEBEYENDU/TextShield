@@ -20,7 +20,34 @@ indicators, and explains that the advanced service is unavailable.
 
 ---
 
-## 1. Problem statement
+## Table of Contents
+
+- [1. Problem Statement](#1-problem-statement)
+- [2. Project Objectives](#2-project-objectives)
+- [3. Features](#3-features)
+- [4. Architecture](#4-architecture)
+- [5. Technologies](#5-technologies)
+- [6. Project Structure](#6-project-structure)
+- [7. Installation](#7-installation)
+- [8. Dataset Setup](#8-dataset-setup)
+- [9. Model Training](#9-model-training)
+- [10. RAG Knowledge Base](#10-rag-knowledge-base)
+- [11. LLM Setup](#11-llm-setup)
+- [12. Running the Application](#12-running-the-application)
+- [13. API Documentation](#13-api-documentation)
+- [14. Threat Intelligence Platform](#14-threat-intelligence-platform)
+- [15. Threat Intelligence Dashboard](#15-threat-intelligence-dashboard)
+- [16. Screenshots](#16-screenshots)
+- [17. ML Evaluation](#17-ml-evaluation)
+- [18. Limitations](#18-limitations)
+- [19. Future Scope](#19-future-scope)
+- [20. Security Considerations](#20-security-considerations)
+- [21. Running the Tests](#21-running-the-tests)
+- [22. Documentation](#22-documentation)
+
+---
+
+## 1. Problem Statement
 
 Email, SMS and chat channels are flooded with spam and fraud. A message like
 *"Your bank account will be blocked. Verify immediately using this link"* looks
@@ -39,7 +66,7 @@ Generation (RAG) pipeline for evidence, and an LLM for explanation.
 
 ---
 
-## 2. Project objectives
+## 2. Project Objectives
 
 - Classify SMS / text / email as SPAM or HAM with calibrated confidence.
 - Compare at least three ML algorithms (Naive Bayes, Logistic Regression,
@@ -52,15 +79,21 @@ Generation (RAG) pipeline for evidence, and an LLM for explanation.
   relevant scam-family evidence for every message.
 - Generate explainable verdicts — via LLM when configured, via a deterministic
   template otherwise; the LLM explains, never overrides, the ML result.
-- Provide a modern responsive dashboard: analyze, history, analytics,
-  knowledge base, model information.
+- Provide a modern responsive dashboard: analyse, history, analytics,
+  knowledge base, model information, threat intelligence dashboard.
 - Expose a validated REST API with graceful degradation and logging.
 - Be fully runnable on a student laptop, with zero required paid services.
+- **Enterprise integration layer** (v2.1): stable APIs, SDKs, authentication,
+  RBAC, plugin framework, event bus, webhooks, and batch processing.
+- **Threat intelligence platform** (v2.2): IOC extraction, threat cache,
+  async lookup engine, provider integrations, reputation aggregation,
+  unified evidence integration, and a security analytics dashboard.
 
 ---
 
 ## 3. Features
 
+### Core Detection
 - **Multichannel input** — SMS, pasted text, structured email (subject/sender/body)
   and pasted raw email (auto-parsed with the stdlib `email` package).
 - **Primary ML classification** — consistent train/serve preprocessing, saved
@@ -78,17 +111,27 @@ Generation (RAG) pipeline for evidence, and an LLM for explanation.
 - **Intent detection** — 8-class sender intent extraction (credential request,
   money request, download, personal data, prize, confirmation, engagement,
   other) feeding the risk decision.
-- **History in SQLite** — message content stored as SHA-256 only by default
-  (plus intent and risk score per row); filtering, sorting, pagination,
-  delete; schema versioned via migrations.
-- **Analytics dashboard** — totals, spam %, risk and type distributions,
-  per-day trend; dependency-free canvas charts.
-- **Model info page** — algorithm, training date, dataset sizes, metrics and
-  the full three-model comparison.
-- **Automated tests** — 157 tests covering preprocessing, classification,
-  indicators, URLs, risk, RAG, settings, repositories, services, lifecycle
-  and the API.
-- **Logging** — rotating file + console; never logs keys or message content.
+
+### v2.1 — Enterprise Integration Layer
+- **REST API** (v2) — 13+ endpoints for analysis, history, batch, system, webhooks, plugins.
+- **Authentication** — API Keys, JWT, Role-Based Access Control (Admin, Analyst, Developer, ReadOnly, Guest).
+- **Batch Analysis API** — CSV, TXT, JSON, ZIP uploads processed asynchronously with job IDs and polling.
+- **Webhook System** — event-driven notifications with retries, signing, timeouts, backoff.
+- **Plugin Framework** — isolated plugin lifecycle (`initialize`, `shutdown`, `metadata`, `capabilities`, `health`).
+- **Event Bus** — internal pub/sub for `MessageReceived`, `AnalysisStored`, `WebhookTriggered`, etc.
+- **Official SDKs** — Python, JavaScript, Java with auth, retries, timeouts, error handling.
+- **OpenAPI 3.1** auto-generated documentation with Swagger UI and ReDoc.
+
+### v2.2 — Threat Intelligence Platform
+- **IOC Extraction Engine** — modular extractors for URLs, domains, IPv4/IPv6, emails, phones, URL shorteners; pluggable registry.
+- **Normalization** — scheme lowercasing, trailing-punctuation removal, domain/email canonicalisation, phone digit normalisation.
+- **Validation** — syntax, IP, domain, email, phone sanity checks without pure regex.
+- **Threat Cache & Persistence** — in-memory + JSON storage, TTL, LRU/TTL eviction, revision tracking, indexed queries, compaction, statistics.
+- **Async Threat Lookup Engine** — coordinator, scheduler, dispatcher, executor, retry (exponential backoff + jitter), timeout, concurrency limiter, circuit breaker, metrics.
+- **Provider Integrations** — Google Safe Browsing + VirusTotal with configurable API keys, rate-limit awareness, cache-first flow, normalised `ThreatEvidence` output.
+- **Reputation Aggregation & Evidence Fusion** — weighted scoring, confidence estimation (5-factor), conflict detection, severity mapping, explainable summaries.
+- **Unified Evidence Integration Engine** — evidence registry, evidence graph with full traceability, merger with conflict detection, confidence calculation, human-readable explanations.
+- **Threat Intelligence Dashboard** — interactive Jinja2 dashboard with Chart.js visualisation covering threat overview, IOC explorer, evidence timeline, threat graph, provider status, provider comparison, threat heatmap, cache analytics, execution metrics, threat history, and confidence breakdown.
 
 ---
 
@@ -121,10 +164,30 @@ RAG retrieval ──────────► ChromaDB / fallback store (persi
 Explanation (LLM ── available? ── template fallback)
         │
         ▼
+┌───────────────────────────────────────────────────────┐
+│              v2.2 Threat Intelligence Platform        │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
+│  │  IOC Engine  │→ │  Threat Cache│→ │ Async Lookup │ │
+│  └──────────────┘  └──────────────┘  └──────────────┘ │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
+│  │   Providers  │→ │  Aggregation │→ │   Evidence   │ │
+│  │ (GSB + VT)   │  │   Engine     │  │   Engine     │ │
+│  └──────────────┘  └──────────────┘  └──────────────┘ │
+│           │                   │                   │    │
+│           ▼                   ▼                   ▼    │
+│     ┌──────────────────────────────────────────────┐ │
+│     │         Threat Intelligence Dashboard         │ │
+│     │  (Overview · IOC Explorer · Timeline · Graph) │ │
+│     │  (Provider Status · Comparison · Heatmap)     │ │
+│     │  (Cache Analytics · Metrics · History)        │ │
+│     └──────────────────────────────────────────────┘ │
+└───────────────────────────────────────────────────────┘
+        │
+        ▼
 Structured JSON  +  SQLite history
         │
         ▼
-WEB UI (FastAPI + vanilla JS dashboard)
+WEB UI (FastAPI + Jinja2 dashboard)
 ```
 
 Clear separation of concerns:
@@ -132,6 +195,9 @@ Clear separation of concerns:
 - **ML** = spam/ham detection (never influenced by RAG/LLM).
 - **RAG** = knowledge retrieval / evidence (adds context, never decides).
 - **LLM** = explanation / recommendation (explains the ML verdict).
+- **Threat Intelligence** = independent layer sitting between providers and the decision engine, never modifying the core AI pipeline.
+
+---
 
 ## 5. Technologies
 
@@ -144,12 +210,13 @@ Clear separation of concerns:
 | Embeddings | sentence-transformers `all-MiniLM-L6-v2` (fallback: n-gram hashing) |
 | LLM | Ollama / any OpenAI-compatible API / NVIDIA NIM (all optional) |
 | Storage | SQLite (stdlib `sqlite3`) |
-| Frontend | HTML5, CSS3, vanilla JavaScript (no external CDNs) |
+| Threat Intel | ChromaDB (fallback: dependency-free numpy store) |
+| Frontend | HTML5, CSS3, Jinja2 templates, Chart.js |
 | Testing | pytest |
 
 ---
 
-## 6. Project structure
+## 6. Project Structure
 
 ```
 TextShield/
@@ -161,6 +228,11 @@ TextShield/
 │   │   ├── routes_stats.py      #   stats + model-info
 │   │   ├── routes_system.py     #   health/readiness/version/config/status
 │   │   ├── routes_knowledge.py  #   knowledge-base status/rebuild
+│   │   ├── routes_ioc.py        #   POST /api/v2/ioc/extract, /validate  (v2.2)
+│   │   ├── routes_cache.py      #   GET/DELETE /api/v2/threat/cache        (v2.2)
+│   │   ├── routes_aggregation.py#   POST /api/v2/threat/aggregate        (v2.2)
+│   │   ├── routes_evidence.py   #   POST/GET /api/v2/evidence             (v2.2)
+│   │   ├── routes_dashboard.py  #   GET /api/v2/dashboard/*               (v2.2)
 │   │   └── middleware.py        #   request-id + request logging
 │   ├── core/                    # settings (env), constants, feature flags,
 │   │   │                        # exceptions, error handlers, DI container
@@ -171,20 +243,68 @@ TextShield/
 │   │   ├── exceptions.py        #   typed error hierarchy
 │   │   ├── errors.py            #   global exception handlers (JSON envelope)
 │   │   └── logging.py           #   structured logging + request-id filter
-│   ├── ml/
-│   │   ├── preprocess.py        # cleaning, unicode normalization, placeholders
-│   │   ├── features.py          # TF-IDF builder
-│   │   ├── classifier.py        # trained model wrapper (SPAM/HAM + proba)
-│   │   ├── indicators.py        # rule-based indicator engine
-│   │   ├── intent.py            # sender intent detection
-│   │   ├── url_analyzer.py      # static URL pattern analysis
-│   │   └── input_detection.py   # raw-mail parsing / type detection
-│   ├── rag/
-│   │   ├── embeddings.py        # sentence-transformers / hashing providers
-│   │   ├── vector_store.py      # ChromaDB / simple-store backends
-│   │   ├── retriever.py         # embed + search + status
-│   │   ├── llm.py               # provider abstraction (ollama/openai/nvidia)
-│   │   └── generator.py         # explanation + recommendation generation
+│   ├── threat/                  # v2.2 Threat Intelligence Platform
+│   │   ├── ioc/                 # IOC Extraction Engine
+│   │   │   ├── models.py        #   IOCType, ExtractedIOC
+│   │   │   ├── base.py          #   BaseExtractor interface
+│   │   │   ├── registry.py      #   ExtractorRegistry
+│   │   │   ├── normalizer.py    #   Normalization rules
+│   │   │   ├── validator.py     #   Validation rules
+│   │   │   ├── engine.py        #   IOCEngine orchestrator
+│   │   │   └── extractors/      #   URL, Domain, IP, Email, Phone, ShortURL
+│   │   ├── cache/               # Threat Cache & Persistence Layer
+│   │   │   ├── models.py        #   CacheRecord, CacheRevision
+│   │   │   ├── storage.py       #   InMemoryStorage + PersistentStorage
+│   │   │   ├── manager.py       #   CRUD, TTL, eviction, revisions
+│   │   │   ├── repository.py    #   Indexed queries
+│   │   │   ├── eviction.py      #   LRU / TTL policies
+│   │   │   ├── cleanup.py       #   Expired removal, pruning, compaction
+│   │   │   ├── serializer.py    #   JSON export/import
+│   │   │   └── statistics.py    #   Hit ratio, provider distribution
+│   │   ├── execution/           # Async Threat Lookup Engine
+│   │   │   ├── coordinator.py   #   Request lifecycle orchestration
+│   │   │   ├── scheduler.py     #   Priority queue scheduling
+│   │   │   ├── dispatcher.py    #   Concurrent provider task dispatch
+│   │   │   ├── executor.py      #   Concurrency-limited execution
+│   │   │   ├── retry.py         #   Exponential backoff with jitter
+│   │   │   ├── timeout.py       #   Global / provider timeouts
+│   │   │   ├── cancellation.py  #   Graceful cancellation
+│   │   │   ├── concurrency.py   #   Semaphore-based concurrency limiter
+│   │   │   ├── circuit_breaker.py#  CLOSED/OPEN/HALF-OPEN per provider
+│   │   │   ├── health.py        #   Provider execution health
+│   │   │   └── metrics.py       #   Requests/s, latency, queue depth
+│   │   ├── providers/           # Threat Intelligence Providers
+│   │   │   ├── google_safe_browsing/  # GSB client, mapper, validator, config
+│   │   │   ├── virustotal/          # VT client, mapper, validator, config
+│   │   │   └── threat_indicator.py  #   ThreatIndicator dataclass
+│   │   ├── aggregation/         # Reputation Aggregation & Evidence Fusion
+│   │   │   ├── models.py        #   ThreatProfile, ThreatSeverity
+│   │   │   ├── weighting.py     #   Provider weights + weighted scorer
+│   │   │   ├── confidence.py    #   5-factor confidence estimation
+│   │   │   ├── conflict.py      #   Conflict detection & summary
+│   │   │   ├── fusion.py        #   Evidence fuser → ThreatProfile
+│   │   │   └── engine.py        #   AggregationEngine orchestrator
+│   │   └── cache.py             # Legacy threat cache (compatibility)
+│   ├── evidence/                # v2.2 Unified Evidence Integration Engine
+│   │   ├── models.py            #   EvidenceItem, EvidenceSource, EvidenceGraph
+│   │   ├── registry.py          #   EvidenceRegistry (pluggable sources)
+│   │   ├── validator.py         #   Evidence schema validation
+│   │   ├── confidence.py        #   Multi-factor confidence calculation
+│   │   ├── merger.py            #   Merge, conflict detection, traceability
+│   │   ├── graph.py             #   Adjacency-list graph, provenance chains
+│   │   ├── engine.py            #   EvidenceEngine orchestration
+│   │   └── explanation.py       #   Human-readable evidence summaries
+│   ├── analytics/               # Dashboard & Security Analytics
+│   │   ├── dashboards.py        #   Summary, provider status, cache, metrics, confidence
+│   │   ├── metrics.py           #   MetricsEngine, MetricsRecord, MetricsSummary
+│   │   ├── history.py           #   AnalysisHistory, HistoryService, get_dashboard_history
+│   │   ├── statistics.py        #   Confidence/risk/intent/behaviour distributions
+│   │   ├── summaries.py         #   Threat score distribution, provider comparison
+│   │   ├── config.py            #   Analytics configuration
+│   │   ├── reports.py           #   Report generation
+│   │   ├── explainability.py    #   Explainability engine
+│   │   ├── monitoring.py        #   System monitor & service health
+│   │   └── audit.py             #   Audit logger & service
 │   ├── database/                # migrations + repositories + V1 facade
 │   │   ├── base.py              #   connections + migration runner
 │   │   ├── migrations.py        #   versioned schema migrations
@@ -194,8 +314,41 @@ TextShield/
 │   │   │                        # configuration, models, system status, KB)
 │   │   ├── analysis_service.py  #   pipeline orchestration
 │   │   └── risk_engine.py       #   transparent risk scoring
+│   ├── ml/                      # ML classifier pipeline
+│   │   ├── preprocess.py        # cleaning, unicode normalization, placeholders
+│   │   ├── features.py          # TF-IDF builder
+│   │   ├── classifier.py        # trained model wrapper (SPAM/HAM + proba)
+│   │   ├── indicators.py        # rule-based indicator engine
+│   │   ├── intent.py            # sender intent detection
+│   │   ├── url_analyzer.py      # static URL pattern analysis
+│   │   └── input_detection.py   # raw-mail parsing / type detection
+│   ├── rag/                     # RAG pipeline
+│   │   ├── embeddings.py        # sentence-transformers / hashing providers
+│   │   ├── vector_store.py      # ChromaDB / simple-store backends
+│   │   ├── retriever.py         # embed + search + status
+│   │   ├── llm.py               # provider abstraction (ollama/openai/nvidia)
+│   │   └── generator.py         # explanation + recommendation generation
+│   ├── sdk/                     # Official SDKs (Python / JavaScript / Java)
 │   ├── utils/                   # file/text/date/validation/response helpers
-│   └── templates/               # Jinja2 pages
+│   ├── templates/               # Jinja2 pages (including dashboard)
+│   └── plugins/                 # Plugin framework
+├── frontend/                    # v2.2 Dashboard frontend
+│   ├── src/
+│   │   ├── pages/
+│   │   │   └── ThreatDashboard/
+│   │   └── components/
+│   │       ├── ThreatSummary/
+│   │       ├── IOCExplorer/
+│   │       ├── EvidenceTimeline/
+│   │       ├── ThreatGraph/
+│   │       ├── ProviderStatus/
+│   │       ├── ProviderComparison/
+│   │       ├── ThreatHeatmap/
+│   │       ├── CacheStatistics/
+│   │       ├── ExecutionMetrics/
+│   │       ├── RecentThreats/
+│   │       ├── ThreatHistory/
+│   │       └── ConfidenceBreakdown/
 ├── static/
 │   ├── css/style.css
 │   ├── js/                      # common.js (shared helpers) + page logic
@@ -212,12 +365,29 @@ TextShield/
 │   ├── train_model.py
 │   ├── evaluate_model.py
 │   └── build_knowledge_base.py
-├── tests/                       # pytest suite (157 tests)
-├── docs/                        # PRD, architecture, migration plan, api, ...
-├── .env.example
+├── tests/                       # pytest suite
+│   ├── threat/
+│   │   ├── ioc/                 # IOC extraction tests
+│   │   ├── cache/               # Cache tests
+│   │   ├── execution/           # Execution engine tests
+│   │   ├── aggregation/         # Aggregation engine tests
+│   │   ├── providers/           # Provider tests
+│   │   └── dashboard/           # Dashboard analytics tests
+│   ├── evidence/                # Evidence integration tests
+│   └── rag/                     # RAG pipeline tests
+├── docs/                        # Documentation
+│   ├── v2.1/                    # Enterprise Integration Layer docs
+│   ├── IOC_Extraction.md        # v2.2 IOC Engine docs
+│   ├── Threat_Cache.md          # v2.2 Cache docs
+│   ├── Threat_Execution.md      # v2.2 Execution engine docs
+│   ├── Threat_Aggregation.md    # v2.2 Aggregation docs
+│   ├── Unified_Evidence.md      # v2.2 Evidence integration docs
+│   ├── Dashboard.md             # v2.2 Dashboard docs
+│   └── providers/               # Provider-specific docs
 ├── requirements.txt
 ├── pytest.ini
-└── run.py
+├── run.py
+└── README.md                    # This file
 ```
 
 ---
@@ -248,21 +418,25 @@ copy .env.example .env        # Windows
 > automatically falls back to a zero-dependency hashing embedder and a numpy
 > vector store — everything still works.
 
-## 8. Dataset setup
+---
+
+## 8. Dataset Setup
 
 ```bash
 python scripts/prepare_dataset.py
 ```
 
 - Reads **every CSV** in `data/raw/`, auto-detects text/label columns,
-  removes empties/duplicates, normalizes labels, prints class distribution,
+  removes empties/duplicates, normalises labels, prints class distribution,
   and writes `train.csv` / `test.csv` (stratified 80/20, deterministic seed).
 - A small curated sample (`data/raw/sample_sms_dataset.csv`, 264 rows) is
   included so the project runs immediately.
 - For a stronger model, add the **UCI SMS Spam Collection** (`spam.csv`) to
   `data/raw/` — fully documented in `data/README.md`.
 
-## 9. Model training and evaluation
+---
+
+## 9. Model Training
 
 ```bash
 python scripts/train_model.py        # compare NB / LR / LinearSVM, save best
@@ -276,7 +450,9 @@ python scripts/evaluate_model.py     # report on held-out test set
   `tfidf_vectorizer.joblib`, `model_metadata.json`, `evaluation_report.json`
   (and `confusion_matrix.png` if matplotlib is installed).
 
-## 10. RAG knowledge-base creation
+---
+
+## 10. RAG Knowledge Base
 
 ```bash
 python scripts/build_knowledge_base.py
@@ -287,7 +463,9 @@ python scripts/build_knowledge_base.py
 - The vector DB **persists**; it is not rebuilt on app start. Rebuild anytime
   via the script, the dashboard button, or `POST /api/knowledge-base/rebuild`.
 
-## 11. LLM setup (optional)
+---
+
+## 11. LLM Setup (optional)
 
 Copy `.env.example` → `.env` and choose a provider:
 
@@ -302,7 +480,9 @@ API keys are read from the environment only — never commit a real `.env`.
 With no LLM configured or reachable, the app automatically uses the
 deterministic template explainer and flags `explanation_source: "template"`.
 
-## 12. Running the application
+---
+
+## 12. Running the Application
 
 ```bash
 python run.py
@@ -314,13 +494,17 @@ Open **http://127.0.0.1:8000**
 
 Quick check: `GET /api/health` returns model/RAG/LLM status.
 
-## 13. API documentation
+---
+
+## 13. API Documentation
 
 Interactive docs (Swagger UI) at **http://127.0.0.1:8000/docs**.
 
+### v1 API (original)
+
 | Method | Endpoint | Description |
 |---|---|---|
-| POST | `/api/analyze` | Analyze a message (SMS/text/email, incl. raw email) |
+| POST | `/api/analyze` | Analyse a message (SMS/text/email, incl. raw email) |
 | GET | `/api/history` | List history (filters, order, pagination) |
 | DELETE | `/api/history/{id}` | Delete one history entry |
 | DELETE | `/api/history` | Clear all history |
@@ -334,43 +518,133 @@ Interactive docs (Swagger UI) at **http://127.0.0.1:8000/docs**.
 | GET | `/api/knowledge-base` | RAG build status |
 | POST | `/api/knowledge-base/rebuild` | Rebuild vector DB from `knowledge_base/` |
 
-Example request:
+### v2.1 API (Enterprise Integration)
 
-```json
-POST /api/analyze
-{
-  "input_type": "sms",
-  "message": "Congratulations! You have won Rs.50,000. Click here to claim."
-}
-```
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/v2/analyze` | Single message analysis |
+| POST | `/api/v2/batch` | Batch analysis (CSV/TXT/JSON/ZIP) |
+| GET | `/api/v2/history` | Analysis history |
+| GET | `/api/v2/system/health` | System health |
+| GET | `/api/v2/system/metrics` | System metrics |
+| POST | `/api/v2/webhooks` | Register webhook |
+| GET | `/api/v2/plugins` | List registered plugins |
 
-Example response (abridged):
+### v2.2 API (Threat Intelligence Platform)
 
-```json
-{
-  "classification": "SPAM",
-  "confidence": 0.988,
-  "risk_level": "HIGH",
-  "message_type": "sms",
-  "indicators": [
-    {"indicator": "Prize / lottery claim", "severity": "high",
-     "evidence": "you have won", "category": "prize"}
-  ],
-  "urls": [],
-  "rag_evidence": [
-    {"document": "Lottery and prize scams...", "source": "lottery_prize_scam.md",
-     "category": "sms_scams", "score": 0.62, "is_example": false}
-  ],
-  "explanation": "This message was classified as SPAM ... matches patterns
-                  characteristic of lottery and prize scams ...",
-  "explanation_source": "template",
-  "recommended_action": "Do not click any links ... Report the message ...",
-  "risk_factors": ["ML classified the message as SPAM (confidence 99%)",
-                   "Indicator 'Prize / lottery claim' (high)", ...]
-}
-```
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/v2/ioc/extract` | Extract IOCs from text |
+| POST | `/api/v2/ioc/validate` | Validate an IOC |
+| GET | `/api/v2/threat/cache` | List cache entries |
+| GET | `/api/v2/threat/cache/{ioc}` | Get cache entry |
+| DELETE | `/api/v2/threat/cache/{ioc}` | Delete cache entry |
+| POST | `/api/v2/threat/cache/refresh` | Refresh cache |
+| GET | `/api/v2/threat/cache/statistics` | Cache statistics |
+| POST | `/api/v2/threat/aggregate` | Aggregate threat evidence |
+| GET | `/api/v2/threat/profile/{ioc}` | Get threat profile |
+| POST | `/api/v2/evidence/collect` | Collect evidence from all subsystems |
+| GET | `/api/v2/evidence/{analysis_id}` | Get unified evidence |
+| GET | `/api/v2/evidence/graph/{analysis_id}` | Get evidence graph |
+| GET | `/api/v2/dashboard/summary` | Dashboard summary |
+| GET | `/api/v2/dashboard/providers` | Provider status |
+| GET | `/api/v2/dashboard/history` | Threat history (paginated) |
+| GET | `/api/v2/dashboard/cache` | Cache analytics |
+| GET | `/api/v2/dashboard/metrics` | Execution metrics |
+| GET | `/api/v2/dashboard/threats` | Recent threats |
+| GET | `/api/v2/dashboard/score-distribution` | Score distribution |
+| GET | `/api/v2/dashboard/provider-comparison/{ioc}` | Provider comparison |
 
-## 14. Screenshots
+---
+
+## 14. Threat Intelligence Platform (v2.2)
+
+The Threat Intelligence Platform is a provider-independent layer that sits
+between external threat providers and the decision engine. It never modifies
+the core AI pipeline.
+
+### Components
+
+- **IOC Extraction Engine** — modular, pluggable extractors for URLs, domains,
+  IP addresses (IPv4/IPv6), email addresses, phone numbers, and URL shorteners.
+  Each extractor implements `supports()`, `extract()`, `normalize()`, `validate()`.
+  New extractors can be added without modifying existing code.
+
+- **Threat Cache & Persistence** — in-memory + JSON storage with TTL-based
+  expiration, LRU/TTL eviction policies, revision tracking, indexed queries
+  (by IOC type, provider, score, confidence, date), compaction, and
+  comprehensive statistics (hit ratio, provider distribution, top queried IOCs).
+
+- **Async Threat Lookup Engine** — a fully asynchronous orchestration engine
+  with configurable concurrency limits, priority scheduling, exponential
+  backoff with jitter retries, global and per-provider timeouts, graceful
+  cancellation, per-provider circuit breakers (CLOSED/OPEN/HALF-OPEN), and
+  detailed execution metrics.
+
+- **Provider Integrations** — Google Safe Browsing and VirusTotal providers
+  with configurable API keys, rate-limit awareness, cache-first lookup flow,
+  and normalised `ThreatEvidence` output that is identical regardless of
+  which provider produced it.
+
+- **Reputation Aggregation & Evidence Fusion** — combines evidence from
+  multiple providers into a unified `ThreatProfile` using configurable
+  provider weights (default: GSB 0.35, VT 0.30, OpenPhish 0.15, PhishTank 0.10,
+  URLhaus 0.10), 5-factor confidence estimation, conflict detection, and
+  severity mapping (Informational → Low → Medium → High → Critical).
+
+- **Unified Evidence Integration Engine** — collects evidence from every
+  subsystem (Threat Intelligence, Hybrid ML, LLM Reasoning, RAG Retrieval,
+  Rule Engine, Semantic Analysis, Intent Analysis) into a single
+  `EvidenceGraph` with full traceability. The evidence graph preserves the
+  chain from raw message through every processing stage to the final
+  unified evidence item.
+
+### Design Principles
+
+- **Provider-independent** — the engine works with any future provider without modification.
+- **Thread-safe** — all managers use `RLock` for concurrent access.
+- **Scalable** — configurable concurrency limits, connection pooling, horizontal scalability support.
+- **Extensible** — new evidence sources, extractors, and providers register through the registry without modifying existing code.
+- **Persistent** — JSON-based persistence layer for cache data.
+
+---
+
+## 15. Threat Intelligence Dashboard (v2.2)
+
+The Threat Intelligence Dashboard provides an enterprise-grade visualisation
+of every stage of the threat intelligence workflow.
+
+### Dashboard Sections
+
+1. **Threat Overview** — total analyses, threat score distribution, high-risk detections, average confidence, provider health
+2. **IOC Explorer** — search by URL, domain, email, phone, IP, hash; view history, threat profile, provider results, evidence, timeline
+3. **Evidence Timeline** — visualises the full chain: message → IOC extraction → cache lookup → provider response → aggregation → evidence integration → decision
+4. **Threat Graph** — interactive graph showing relationships between messages, indicators, providers, evidence, and threat profiles
+5. **Provider Status** — health, latency, success rate, failures, quota usage, circuit breaker state
+6. **Provider Comparison** — compare provider responses for the same IOC, highlighting agreement, disagreement, missing responses, confidence
+7. **Threat Heatmap** — threat volume, severity distribution, confidence distribution, provider coverage
+8. **Cache Analytics** — cache size, hit/miss ratio, TTL distribution, evictions, top queried IOCs
+9. **Execution Metrics** — average lookup time, concurrency, queue depth, retries, timeouts, requests per second
+10. **Threat History** — searchable, filterable history (date, IOC type, threat score, provider, severity) with pagination
+11. **Confidence Breakdown** — breakdown of confidence contributions from each subsystem
+
+### Visualisation
+
+Charts are rendered with **Chart.js** loaded from CDN. Each chart component
+is lazy-loaded: bar charts for distributions, line charts for timelines,
+doughnut charts for breakdowns, and heatmaps for temporal volume.
+
+### UX
+
+- **Responsive** — works on desktop and mobile browsers.
+- **Dark mode compatible** — CSS variables support theme switching.
+- **Explainable** — every data point includes a human-readable explanation of
+  which subsystem produced it, when, why, and supporting artifacts.
+- **Accessible** — semantic HTML with ARIA labels.
+
+---
+
+## 16. Screenshots
 
 *Placeholder — add screenshots of the dashboard, result cards, history,
 analytics and knowledge-base pages here.*
@@ -378,9 +652,12 @@ analytics and knowledge-base pages here.*
 ```
 📸 dashboard.png    📸 result-spam.png    📸 result-ham.png
 📸 history.png      📸 analytics.png      📸 knowledge-base.png
+📸 threat-dashboard.png  📸 provider-status.png  📸 evidence-graph.png
 ```
 
-## 15. ML evaluation (bundled sample dataset)
+---
+
+## 17. ML Evaluation (bundled sample dataset)
 
 On the held-out test split of the included sample dataset (53 rows):
 
@@ -393,7 +670,7 @@ On the held-out test split of the included sample dataset (53 rows):
 Confusion matrix (selected model, ham rows/spam rows):
 
 ```
-            HAM    SPAM
+             HAM    SPAM
 HAM          36      1
 SPAM          1     15
 ```
@@ -402,7 +679,9 @@ SPAM          1     15
 - Full numbers are always available under *About → Trained model* in the app
   and in `models/model_metadata.json`.
 
-## 16. Limitations
+---
+
+## 18. Limitations
 
 - **Informational only** — risk verdicts are heuristic scores, not legal,
   financial or security assurance.
@@ -421,17 +700,24 @@ SPAM          1     15
 - **Hashing-embedding fallback** — semantic quality is lower than
   sentence-transformers; install `sentence-transformers` for best retrieval.
 
-## 17. Future scope
+---
+
+## 19. Future Scope
 
 - Stream-based background classification (email inbox scanner, SMS inbox).
 - Multilingual support (additional datasets + rule sets).
 - Transformer classifier (fine-tuned BERT) as an alternative primary model.
-- Threat-intel integration (Safe Browsing API) for live URL reputation checks.
-- User feedback loop (human-in-the-loop labels → periodic retraining).
+- Additional threat intelligence providers (OpenPhish, PhishTank, URLhaus, AbuseIPDB).
+- Threat aggregation / timeline views.
+- Decision Engine integration.
+- Full SPA frontend (React/Vue) with WebSocket-based real-time updates.
 - Containerization (Docker) and deployment guides.
 - Rate limiting + authentication for deployed instances.
+- Knowledge base expansion with user feedback loop (human-in-the-loop labels → periodic retraining).
 
-## 18. Security considerations
+---
+
+## 20. Security Considerations
 
 - No secrets in source: all keys come from `.env` (git-ignored).
 - User input is sanitized, validated and length-limited (Pydantic).
@@ -441,26 +727,75 @@ SPAM          1     15
 - History stores only a SHA-256 hash of message content by default
   (`HISTORY_STORE_PREVIEW=false`); preview storing is opt-in and deletable.
 - Logging excludes API keys, passwords and message bodies.
+- The threat intelligence platform never logs API keys or exposes provider credentials.
+- All external responses are validated and sanitised before storage.
 
-## 19. Run the tests
+---
+
+## 21. Running the Tests
 
 ```bash
 python -m pytest
 ```
 
-157 tests covering: preprocessing, spam/ham prediction, indicator detection,
-URL analysis, risk calculation, RAG retrieval, settings, repositories,
-services, lifecycle and all API endpoints.
+The test suite covers: preprocessing, spam/ham prediction, indicator detection,
+URL analysis, risk calculation, RAG retrieval, settings, repositories, services,
+lifecycle, all API endpoints, IOC extraction, threat cache, async execution engine,
+reputation aggregation, evidence integration, provider integrations, and the
+dashboard analytics — with 90%+ coverage targets per module.
 
-## 20. Documentation
+---
+
+## 22. Documentation
 
 Detailed write-ups live in `docs/`:
 
+### Core
 - [`docs/architecture.md`](docs/architecture.md) — system design & data flow
 - [`docs/ml_pipeline.md`](docs/ml_pipeline.md) — preprocessing, features, training, evaluation
 - [`docs/rag_pipeline.md`](docs/rag_pipeline.md) — knowledge base, embeddings, retrieval, generation
 - [`docs/api.md`](docs/api.md) — full API reference with examples
 - [`docs/setup.md`](docs/setup.md) — environment & troubleshooting
+
+### v2.1 — Enterprise Integration Layer
+- [`docs/v2.1/`](docs/v2.1/) — API spec, auth guide, roadmap
+
+### v2.2 — Threat Intelligence Platform
+- [`docs/IOC_Extraction.md`](docs/IOC_Extraction.md) — IOC Extraction Engine architecture, rules, examples, extension guide
+- [`docs/Threat_Cache.md`](docs/Threat_Cache.md) — cache architecture, lifecycle, storage, revision model, TTL strategy, configuration
+- [`docs/Threat_Execution.md`](docs/Threat_Execution.md) — execution architecture, lifecycle, scheduler, coordinator, dispatcher, retry policy, circuit breaker design, performance characteristics, configuration, examples
+- [`docs/Threat_Aggregation.md`](docs/Threat_Aggregation.md) — aggregation architecture, scoring model, confidence calculation, conflict resolution, examples
+- [`docs/Unified_Evidence.md`](docs/Unified_Evidence.md) — evidence architecture, evidence graph design, integration guide, extension guide, examples
+- [`docs/Dashboard.md`](docs/Dashboard.md) — dashboard architecture, components, analytics, configuration, examples
+- [`docs/providers/`](docs/providers/) — provider-specific documentation (Google Safe Browsing, VirusTotal)
+
+---
+
+## 23. Git Workflow
+
+The project uses feature branches:
+
+```
+v2.2-dev          — Development branch for v2.2 threat intelligence platform
+v2.1-dev          — Development branch for v2.1 enterprise integration layer
+main              — Stable release branch
+```
+
+Commit messages follow the conventional format:
+```
+feat(api): add v2 analysis endpoint
+feat(auth): implement JWT middleware
+feat(ioc): implement extraction engine
+feat(cache): implement cache manager
+feat(execution): implement coordinator
+feat(aggregation): implement weighting model
+feat(evidence): implement evidence registry
+feat(dashboard): add threat overview
+docs(ioc): document extraction engine
+test(ioc): add comprehensive tests
+```
+
+All tests must pass before every commit.
 
 ---
 
