@@ -1,17 +1,20 @@
 from __future__ import annotations
 
-from typing import Optional, Dict, Any, List
-from datetime import datetime, timezone
+import logging
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
 
 from app.threat.ioc.models import IOCType
-from app.threat.execution.models import LookupRequest, LookupResult, ThreatEvidence
+from app.threat.providers.threat_indicator import ThreatIndicator
 
-VirusTotalProvider.name = "virustotal"
-VirusTotalProvider.version = "1.0.0"
+logger = logging.getLogger(__name__)
 
 
 class VirusTotalProvider:
     """VirusTotal provider following the IThreatProvider abstraction."""
+
+    name = "virustotal"
+    version = "1.0.0"
 
     def __init__(self, api_key: str = "", enabled: bool = True, **kwargs: Any):
         self._api_key = api_key
@@ -20,6 +23,7 @@ class VirusTotalProvider:
         self.ttl = kwargs.get("ttl", 300)
         self.timeout = kwargs.get("timeout", 5.0)
         self.configuration = kwargs
+        self._health: Dict[str, Any] = {"healthy": True, "last_check": None}
 
     @property
     def enabled(self) -> bool:
@@ -46,29 +50,65 @@ class VirusTotalProvider:
 
     def initialize(self) -> None:
         self._initialized = True
+        self._health = {"healthy": True, "last_check": datetime.now(timezone.utc).isoformat(), "error": None}
+        logger.info("VirusTotal provider initialized: enabled=%s", self.enabled)
 
     def shutdown(self) -> None:
         self._initialized = False
+        logger.info("VirusTotal provider shut down")
 
-    async def lookup_url(self, request: LookupRequest) -> Optional[ThreatIndicator]:
+    def health_check(self) -> Dict[str, Any]:
+        try:
+            now = datetime.now(timezone.utc).isoformat()
+            healthy = self._initialized
+            self._health = {"healthy": healthy, "last_check": now, "error": None, "initialized": self._initialized, "enabled": self.enabled}
+            return dict(self._health)
+        except Exception as exc:  # noqa: BLE001
+            return {"healthy": False, "error": str(exc), "last_check": datetime.now(timezone.utc).isoformat()}
+
+    async def lookup_url(self, url: str) -> Optional[ThreatIndicator]:
+        if hasattr(url, "ioc"):
+            url = getattr(url, "ioc")
+        if not isinstance(url, str):
+            return None
+        if not self._initialized:
+            self.initialize()
         if not self._api_key:
             return None
-        return await self._simulate_url_check(request.ioc)
+        return await self._simulate_url_check(url)
 
-    async def lookup_domain(self, request: LookupRequest) -> Optional[ThreatIndicator]:
+    async def lookup_domain(self, domain: str) -> Optional[ThreatIndicator]:
+        if hasattr(domain, "ioc"):
+            domain = getattr(domain, "ioc")
+        if not isinstance(domain, str):
+            return None
+        if not self._initialized:
+            self.initialize()
         if not self._api_key:
             return None
-        return await self._simulate_domain_check(request.ioc)
+        return await self._simulate_domain_check(domain)
 
-    async def lookup_ip(self, request: LookupRequest) -> Optional[ThreatIndicator]:
+    async def lookup_ip(self, ip: str) -> Optional[ThreatIndicator]:
+        if hasattr(ip, "ioc"):
+            ip = getattr(ip, "ioc")
+        if not isinstance(ip, str):
+            return None
+        if not self._initialized:
+            self.initialize()
         if not self._api_key:
             return None
-        return await self._simulate_ip_check(request.ioc)
+        return await self._simulate_ip_check(ip)
 
-    async def lookup_hash(self, request: LookupRequest) -> Optional[ThreatIndicator]:
+    async def lookup_hash(self, hash_value: str) -> Optional[ThreatIndicator]:
+        if hasattr(hash_value, "ioc"):
+            hash_value = getattr(hash_value, "ioc")
+        if not isinstance(hash_value, str):
+            return None
+        if not self._initialized:
+            self.initialize()
         if not self._api_key:
             return None
-        return await self._simulate_hash_check(request.ioc)
+        return await self._simulate_hash_check(hash_value)
 
     async def _simulate_url_check(self, url: str) -> Optional[ThreatIndicator]:
         url_lower = url.lower()
@@ -87,7 +127,7 @@ class VirusTotalProvider:
                 confidence=conf,
                 severity=sev,
                 timestamp=datetime.now(timezone.utc),
-                ttl=self.ttl,
+                ttl=timedelta(seconds=self.ttl),
                 source="virustotal",
                 explanation="VT heuristic detection",
             )
@@ -109,7 +149,7 @@ class VirusTotalProvider:
                 confidence=conf,
                 severity=sev,
                 timestamp=datetime.now(timezone.utc),
-                ttl=self.ttl,
+                ttl=timedelta(seconds=self.ttl),
                 source="virustotal",
                 explanation="VT domain analysis",
             )
@@ -128,7 +168,7 @@ class VirusTotalProvider:
                     confidence=0.55,
                     severity="medium",
                     timestamp=datetime.now(timezone.utc),
-                    ttl=self.ttl,
+                    ttl=timedelta(seconds=self.ttl),
                     source="virustotal",
                     explanation="VT IP pattern",
                 )
@@ -146,20 +186,20 @@ class VirusTotalProvider:
                 confidence=conf,
                 severity=sev,
                 timestamp=datetime.now(timezone.utc),
-                ttl=self.ttl,
+                ttl=timedelta(seconds=self.ttl),
                 source="virustotal",
                 explanation="VT hash check",
             )
         elif len(hash_val) == 40:  # SHA1
             return ThreatIndicator(
                 indicator=hash_val,
-                indicator_type=IOCType.CRYPTO_WALLER,
+                indicator_type=IOCType.CRYPTO_WALLET,
                 provider=self.name,
                 detection_status="unknown",
                 confidence=0.65,
                 severity="medium",
                 timestamp=datetime.now(timezone.utc),
-                ttl=self.ttl,
+                ttl=timedelta(seconds=self.ttl),
                 source="virustotal",
                 explanation="VT SHA1 check",
             )
@@ -174,8 +214,27 @@ class VirusTotalProvider:
                 confidence=conf,
                 severity=sev,
                 timestamp=datetime.now(timezone.utc),
-                ttl=self.ttl,
+                ttl=timedelta(seconds=self.ttl),
                 source="virustotal",
                 explanation="VT SHA256 check",
             )
         return None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "name": self.name,
+            "version": self.version,
+            "enabled": self.enabled,
+            "api_key_configured": bool(self._api_key),
+            "capabilities": self.capabilities(),
+            "ttl": self.ttl,
+            "timeout": self.timeout,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "VirusTotalProvider":
+        return cls(
+            api_key=data.get("api_key", ""),
+            enabled=data.get("enabled", True),
+            **{k: v for k, v in data.items() if k not in ("name", "version", "api_key", "enabled")},
+        )
