@@ -107,16 +107,34 @@ def create_app(registry: ServiceRegistry | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
+        # Startup validation
+        errs = settings.validate()
+        if errs:
+            raise RuntimeError("Config validation failed: " + "; ".join(errs))
         init_db()
         mark_started()
         logger.info(
-            "TextShield v%s starting (env=%s, db=%s)",
+            "TextShield v%s starting (env=%s, db=%s, cfg_version=%s)",
             __version__,
             settings.ENVIRONMENT,
             settings.database_path,
+            settings.CONFIG_VERSION,
         )
-        yield
-        logger.info("TextShield shutting down")
+        try:
+            yield
+        finally:
+            # Graceful shutdown: clean caches, flush logs
+            logger.info("TextShield shutting down — draining...")
+            try:
+                # Provider isolation: shutdown registry if present
+                from app.threat.providers import get_threat_registry
+                get_threat_registry().shutdown_all()
+            except Exception:
+                pass
+            # Memory cleanup hints
+            import gc
+            gc.collect()
+            logger.info("TextShield shutdown complete")
 
     app = FastAPI(
         title=settings.APP_TITLE,

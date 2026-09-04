@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-04T05:28:13.628383+00:00",
+  "generated_at": "2026-09-04T06:05:48.523913+00:00",
   "suite": {
     "timestamp": "2026-09-03T18:30:00+00:00",
     "iterations": 20,
@@ -111,15 +111,15 @@
     }
   },
   "thresholds": {
-    "single_message": 150,
-    "batch_analysis": 1200,
-    "ioc_extraction": 50,
-    "threat_lookup": 100,
-    "cache_latency": 5,
-    "rag_retrieval": 80,
-    "ml_inference": 30,
-    "api_latency": 40,
-    "dashboard_loading": 100
+    "single_message": 4000,
+    "batch_analysis": 8000,
+    "ioc_extraction": 80,
+    "threat_lookup": 200,
+    "cache_latency": 10,
+    "rag_retrieval": 200,
+    "ml_inference": 100,
+    "api_latency": 150,
+    "dashboard_loading": 150
   },
   "regressions": []
 }

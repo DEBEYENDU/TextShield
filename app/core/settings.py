@@ -23,8 +23,22 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 load_dotenv(BASE_DIR / ".env")
 
 
-def _get(key: str, default: str = "") -> str:
+def _get_secret(key: str, default: str = "") -> str:
+    """Env var or Docker secret file (<KEY>_FILE). Secret never logged."""
+    file_key = f"{key}_FILE"
+    file_path = os.getenv(file_key)
+    if file_path:
+        try:
+            p = Path(file_path)
+            if p.exists():
+                return p.read_text(encoding="utf-8").strip()
+        except Exception:
+            pass
     return os.getenv(key, default).strip()
+
+
+def _get(key: str, default: str = "") -> str:
+    return _get_secret(key, default)
 
 
 def _get_bool(key: str, default: bool = False) -> bool:
@@ -133,6 +147,12 @@ class Settings:
     FEATURE_LLM: bool = _get_bool("FEATURE_LLM", True)
     FEATURE_HISTORY: bool = _get_bool("FEATURE_HISTORY", True)
 
+    CONFIG_VERSION: str = "2.2"
+
+    # Security / hardening
+    API_KEY: str = _get_secret("API_KEY", "")
+    ALLOWED_ORIGINS: str = _get("ALLOWED_ORIGINS", "http://localhost:8000,http://127.0.0.1:8000")
+
     @property
     def database_path(self) -> Path:
         """Resolve the sqlite:/// URL to a path (absolute or project-relative)."""
@@ -158,10 +178,32 @@ class Settings:
         ):
             path.mkdir(parents=True, exist_ok=True)
 
+    def validate(self) -> list[str]:
+        """Startup validation; returns list of errors (empty = ok)."""
+        errors: list[str] = []
+        if not self.DATABASE_URL:
+            errors.append("DATABASE_URL must not be empty")
+        if not (1 <= self.MAX_MESSAGE_LENGTH <= 100000):
+            errors.append(f"MAX_MESSAGE_LENGTH {self.MAX_MESSAGE_LENGTH} out of range 1..100000")
+        if not (1 <= self.LLM_TIMEOUT_SECONDS <= 300):
+            errors.append(f"LLM_TIMEOUT_SECONDS {self.LLM_TIMEOUT_SECONDS} out of range 1..300")
+        if self.RAG_TOP_K < 1 or self.RAG_TOP_K > 20:
+            errors.append(f"RAG_TOP_K {self.RAG_TOP_K} out of range 1..20")
+        if self.RISK_MEDIUM_THRESHOLD >= self.RISK_HIGH_THRESHOLD:
+            errors.append("RISK thresholds mis-ordered: medium < high required")
+        if self.RISK_HIGH_THRESHOLD >= self.RISK_CRITICAL_THRESHOLD:
+            errors.append("RISK thresholds mis-ordered: high < critical required")
+        if self.ENVIRONMENT not in {"development", "staging", "production", "test"}:
+            errors.append(f"Unknown ENVIRONMENT {self.ENVIRONMENT}")
+        return errors
+
 
 def load_settings() -> Settings:
     """Factory used by the DI container and tests."""
     s = Settings()
+    errs = s.validate()
+    if errs:
+        raise ValueError("Invalid configuration: " + "; ".join(errs))
     s.ensure_directories()
     return s
 

@@ -28,9 +28,14 @@ def get_db_path() -> Path:
 
 
 def _connect() -> sqlite3.Connection:
-    conn = sqlite3.connect(get_db_path(), timeout=10)
+    conn = sqlite3.connect(get_db_path(), timeout=10, check_same_thread=False)
     conn.row_factory = sqlite3.Row
+    # Hardening & performance PRAGMAs
     conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA journal_mode = WAL")
+    conn.execute("PRAGMA synchronous = NORMAL")
+    conn.execute("PRAGMA cache_size = -2000")  # 2MB
+    conn.execute("PRAGMA busy_timeout = 5000")
     return conn
 
 

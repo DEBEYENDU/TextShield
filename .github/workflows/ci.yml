@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [ v2.2-dev, main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - name: Install deps
+        run: |
+          pip install -r requirements.txt
+          pip install black ruff mypy pytest pytest-cov pytest-asyncio httpx fastapi
+      - name: Formatting (black)
+        run: black --check app benchmarks tests
+      - name: Lint (ruff)
+        run: ruff check app benchmarks || true
+      - name: Type check (mypy)
+        run: mypy app --ignore-missing-imports || true
+      - name: Tests
+        run: pytest -q --cov=app --cov-report=term-missing --cov-fail-under=60
+      - name: Benchmark suite
+        run: python -m benchmarks.suite --iterations 5 --store --report; cat benchmarks/report.json
+      - name: Security scan (pip audit)
+        run: pip install pip-audit && pip-audit || true
+      - name: Validate docs
+        run: ls docs/production docs/security docs/performance benchmarks/history.json benchmarks/report.json

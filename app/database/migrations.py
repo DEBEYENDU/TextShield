@@ -102,9 +102,20 @@ _KB_UNIQUE_INDEX: list[Statement] = [
     "ON kb_metadata (document_name)",
 ]
 
+# Migration 5: production hardening — indexes, query optimization, data integrity
+_HARDENING: list[Statement] = [
+    # Covering indexes for common queries (history pagination, analytics)
+    "CREATE INDEX IF NOT EXISTS idx_analyses_timestamp_id ON analyses (timestamp DESC, id DESC)",
+    "CREATE INDEX IF NOT EXISTS idx_analyses_risk_score ON analyses (risk_score DESC)",
+    "CREATE INDEX IF NOT EXISTS idx_analyses_message_type ON analyses (message_type)",
+    # Composite for dashboard queries
+    "CREATE INDEX IF NOT EXISTS idx_analyses_class_risk ON analyses (classification, risk_level)",
+]
+
 MIGRATIONS: list[tuple[int, str, list[Statement]]] = [
     (1, "initial_schema", _INITIAL_SCHEMA),
     (2, "v2_analysis_columns", _V2_COLUMNS),
     (3, "meta_tables", _META_TABLES),
     (4, "kb_metadata_unique_index", _KB_UNIQUE_INDEX),
+    (5, "production_hardening_indexes", _HARDENING),
 ]
