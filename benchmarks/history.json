@@ -1,0 +1,18 @@
+[
+  {
+    "timestamp": "2026-09-03T18:30:00+00:00",
+    "iterations": 20,
+    "results": [
+      {"name": "single_message", "iterations": 20, "mean_ms": 42.1, "median_ms": 38.5, "p95_ms": 68.2, "min_ms": 32.0, "max_ms": 75.1, "throughput_per_sec": 23.75, "timestamp": "2026-09-03T18:30:00+00:00"},
+      {"name": "batch_analysis", "iterations": 20, "mean_ms": 380.4, "median_ms": 365.0, "p95_ms": 520.0, "min_ms": 340.0, "max_ms": 580.0, "throughput_per_sec": 2.63, "timestamp": "2026-09-03T18:30:00+00:00"},
+      {"name": "ioc_extraction", "iterations": 20, "mean_ms": 8.2, "median_ms": 7.1, "p95_ms": 14.3, "min_ms": 5.5, "max_ms": 16.0, "throughput_per_sec": 121.95, "timestamp": "2026-09-03T18:30:00+00:00"},
+      {"name": "threat_lookup", "iterations": 20, "mean_ms": 12.4, "median_ms": 11.8, "p95_ms": 18.9, "min_ms": 10.2, "max_ms": 22.0, "throughput_per_sec": 80.65, "timestamp": "2026-09-03T18:30:00+00:00"},
+      {"name": "cache_latency", "iterations": 20, "mean_ms": 0.85, "median_ms": 0.78, "p95_ms": 1.42, "min_ms": 0.6, "max_ms": 1.8, "throughput_per_sec": 1176.47, "timestamp": "2026-09-03T18:30:00+00:00"},
+      {"name": "rag_retrieval", "iterations": 20, "mean_ms": 22.5, "median_ms": 20.1, "p95_ms": 35.4, "min_ms": 16.0, "max_ms": 40.2, "throughput_per_sec": 44.44, "timestamp": "2026-09-03T18:30:00+00:00"},
+      {"name": "ml_inference", "iterations": 20, "mean_ms": 9.8, "median_ms": 9.2, "p95_ms": 13.5, "min_ms": 8.0, "max_ms": 15.1, "throughput_per_sec": 102.04, "timestamp": "2026-09-03T18:30:00+00:00"},
+      {"name": "api_latency", "iterations": 20, "mean_ms": 18.3, "median_ms": 16.9, "p95_ms": 28.7, "min_ms": 14.2, "max_ms": 32.0, "throughput_per_sec": 54.64, "timestamp": "2026-09-03T18:30:00+00:00"},
+      {"name": "dashboard_loading", "iterations": 20, "mean_ms": 6.1, "median_ms": 5.4, "p95_ms": 9.8, "min_ms": 4.2, "max_ms": 11.0, "throughput_per_sec": 163.93, "timestamp": "2026-09-03T18:30:00+00:00"}
+    ],
+    "summary": {"total": 9, "slowest": "batch_analysis", "fastest": "cache_latency"}
+  }
+]
