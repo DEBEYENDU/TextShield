@@ -767,7 +767,114 @@ Detailed write-ups live in `docs/`:
 - [`docs/Threat_Aggregation.md`](docs/Threat_Aggregation.md) — aggregation architecture, scoring model, confidence calculation, conflict resolution, examples
 - [`docs/Unified_Evidence.md`](docs/Unified_Evidence.md) — evidence architecture, evidence graph design, integration guide, extension guide, examples
 - [`docs/Dashboard.md`](docs/Dashboard.md) — dashboard architecture, components, analytics, configuration, examples
-- [`docs/providers/`](docs/providers/) — provider-specific documentation (Google Safe Browsing, VirusTotal)
+- [`docs/providers/`](docs/providers/) — provider-specific documentation (Google Safe Browsing, VirusTotal, OpenPhish, PhishTank, URLhaus, AbuseIPDB)
+
+---
+
+## 23. Project Overview (v2.2.0)
+
+TextShield v2.2 is a production-hardened, open-source spam/phishing detection platform with explainable AI and a full Threat Intelligence Platform. See `docs/architecture.md` + `docs/production/Architecture_Review.md` for diagrams.
+
+## 24. Quick Start
+
+```bash
+git clone https://github.com/DEBEYENDU/TextShield.git && cd TextShield
+python -m venv .venv && source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env
+python scripts/prepare_dataset.py
+python scripts/train_model.py
+python scripts/build_knowledge_base.py
+python run.py  # http://127.0.0.1:8000  docs at /docs
+```
+
+Docker (if provided): `docker compose up --build`
+
+## 25. Configuration
+
+All via `app/core/settings.py` + `.env` / `*_FILE` secrets. Key vars: `APP_ENV`, `DATABASE_URL`, `MAX_MESSAGE_LENGTH`, `RAG_TOP_K`, `LLM_PROVIDER/MODEL/BASE_URL/API_KEY`, `API_KEY`, `ALLOWED_ORIGINS`, `FEATURE_*`, risk thresholds. Startup `Settings.validate()` fails fast. See `docs/setup.md` + `.env.example`.
+
+## 26. REST API
+
+Base `http://127.0.0.1:8000`; OpenAPI `/docs`. See Section 13 + `docs/api.md`. Key groups: `/api/analyze`, `/api/history`, `/api/v2/*`, `/api/v2/threat/*`, `/api/v2/dashboard/*`, `/api/system/*`. Consistent envelope `{status,data,error}`, pagination `skip/limit` or `page/page_size`, 413/429 handling, `/api/health` → `/readiness`/`/liveness`/`/healthz`.
+
+## 27. SDKs
+
+Official `app/sdk/` Python / JS / Java clients with auth, retries, timeout, error handling. See `examples/`:
+
+```python
+from examples.python_client import TextShieldClient
+c = TextShieldClient(base_url="http://127.0.0.1:8000", api_key="...")
+print(c.analyze("You've won! http://bit.ly/abc"))
+```
+
+## 28. Threat Intelligence (v2.2)
+
+See Section 14 + `docs/providers/` + `docs/IOC_Extraction.md` etc. Six providers (GSB, VT, OpenPhish, PhishTank, URLhaus, AbuseIPDB) via `IThreatProvider`, cache-first, retry/rate-limit/circuit-breaker, normalized `ThreatEvidence`.
+
+## 29. RAG
+
+ChromaDB + `sentence-transformers` (fallback hashing). Corpus `knowledge_base/` 10 categories, chunk 700 chars overlap, persistent `vector_db/`, `RAG_TOP_K=4`. See `docs/rag_pipeline.md` + `docs/Knowledge_Base_Design.md`.
+
+## 30. Hybrid ML
+
+TF-IDF (word+bigram, sublinear) + Linear SVM (calibrated) primary (selected via F1 spam). Fallbacks NB/LR. See `docs/ml_pipeline.md`.
+
+## 31. Decision Engine
+
+`app/decision/decision_engine.py` fuses ML confidence + rule indicators + RAG evidence + risk engine (LOW/MEDIUM/HIGH/CRITICAL/UNCERTAIN) transparent factors. Deterministic, LLM never overrides.
+
+## 32. Evidence Engine
+
+`app/evidence/engine.py` + `app/threat/aggregation` + `EvidenceGraph` (see Section 14 unified engine) traceability chain message → IOC → cache → providers → aggregation → evidence → decision. See `docs/Unified_Evidence.md`.
+
+## 33. Screenshots
+
+Already in Section 16 + `frontend/` demo; placeholder pending real captures in release.
+
+## 34. Project Structure
+
+See Section 6 canonical tree (includes `app/threat/`, `app/evidence/`, `frontend/`, `benchmarks/`, `examples/`).
+
+## 35. Roadmap
+
+- v2.3 planned: Postgres, PWA/service-worker, mTLS, transformer classifier, multilingual rules, streaming inbox scanner. See `docs/Implementation_Roadmap.md` + `docs/production/Production_Readiness_Checklist.md`.
+
+## 36. Contributing
+
+PRs welcome! Branch `v2.2-dev` → `main`. Run `scripts/lint.sh`, `black`, `ruff`, `mypy`, `pytest -q --cov`, `benchmarks/suite.py`. See commit conventions in Section 23 Git Workflow. Issues at https://github.com/DEBEYENDU/TextShield/issues.
+
+## 37. License
+
+MIT — see `LICENSE` (to be added if missing; default MIT as per `pyproject.toml`). Enterprise evaluation permitted, no warranty.
+
+## 38. Citation
+
+```bibtex
+@software{textshield2026,
+  title={TextShield: AI-powered spam & ham detection with RAG and threat intelligence},
+  author={Karmakar, Debeyendu Nirmal},
+  year={2026},
+  version={2.2.0},
+  url={https://github.com/DEBEYENDU/TextShield}
+}
+```
+
+## 39. Acknowledgements
+
+Supervisor: NA, B.E. Computer Engineering; libraries: scikit-learn, FastAPI, ChromaDB, sentence-transformers, Chart.js; providers Abuse.ch, PhishTank, OpenPhish.
+
+## 40. Known Limitations
+
+- Sample dataset small; UCI SMS improves generalization; English/Indian-English rules.
+- Heuristic URL analysis never fetches URLs.
+- Hashing fallback lower semantic quality.
+- SQLite WAL single-instance (migrate to Postgres for scale).
+- See `docs/production/Known_Issues.md` + Section 18.
+
+## 41. Future Work
+
+Stream scanner, multilingual, BERT classifier, additional providers, SPA+WebSockets, Docker, rate-limit+auth hardening, KB human-in-the-loop. See Section 19 + `docs/production/Known_Issues.md`.
 
 ---
 
