@@ -27,7 +27,12 @@ from app.api import (
     routes_system,
     routes_analytics,
 )
-from app.api.middleware import LoggingMiddleware, RequestIDMiddleware
+from app.api.middleware import (
+    LoggingMiddleware,
+    RateLimitMiddleware,
+    RequestIDMiddleware,
+    SecurityHeadersMiddleware,
+)
 from app.core.container import ServiceRegistry, create_container, verify_container
 from app.core.errors import register_exception_handlers
 from app.core.logging import get_logger, setup_logging
@@ -124,6 +129,8 @@ def create_app(registry: ServiceRegistry | None = None) -> FastAPI:
 
     register_exception_handlers(app)
     app.add_middleware(LoggingMiddleware)
+    app.add_middleware(RateLimitMiddleware)
+    app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(RequestIDMiddleware)
 
     if STATIC_DIR.exists():
