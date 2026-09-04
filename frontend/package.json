@@ -1,0 +1,13 @@
+{
+  "name": "textshield-frontend",
+  "version": "2.2.0",
+  "description": "TextShield dashboard frontend",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

@@ -1,3 +1,14 @@
+[project]
+name = "textshield"
+version = "2.2.0"
+description = "AI-powered multichannel spam & ham detection with RAG and threat intelligence"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [{name = "TextShield Contributors"}]
+keywords = ["spam", "phishing", "rag", "threat-intelligence"]
+classifiers = ["Development Status :: 5 - Production/Stable", "Intended Audience :: Developers"]
+
 [tool.black]
 line-length = 100
 target-version = ["py311"]

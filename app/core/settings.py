@@ -147,7 +147,7 @@ class Settings:
     FEATURE_LLM: bool = _get_bool("FEATURE_LLM", True)
     FEATURE_HISTORY: bool = _get_bool("FEATURE_HISTORY", True)
 
-    CONFIG_VERSION: str = "2.2"
+    CONFIG_VERSION: str = "2.2.0"
 
     # Security / hardening
     API_KEY: str = _get_secret("API_KEY", "")
