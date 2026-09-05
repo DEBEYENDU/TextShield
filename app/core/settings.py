@@ -153,6 +153,40 @@ class Settings:
     API_KEY: str = _get_secret("API_KEY", "")
     ALLOWED_ORIGINS: str = _get("ALLOWED_ORIGINS", "http://localhost:8000,http://127.0.0.1:8000")
 
+    # JWT / Auth (used by app/authentication/manager.py)
+    JWT_SECRET_KEY: str = _get_secret("JWT_SECRET_KEY", "change-me-in-production-please-rotate")
+    JWT_ALGORITHM: str = _get("JWT_ALGORITHM", "HS256")
+    JWT_EXPIRATION_MINUTES: int = _get_int("JWT_EXPIRATION_MINUTES", 60)
+
+    # RAG extended (centralized to avoid duplication with app/rag/config.py;
+    # RagConfig.from_settings reads these if present)
+    RAG_MAX_CONTEXT_CHUNKS: int = _get_int("RAG_MAX_CONTEXT_CHUNKS", 5)
+    RAG_MAX_TOKEN_LIMIT: int = _get_int("RAG_MAX_TOKEN_LIMIT", 2000)
+    RAG_SIMILARITY_THRESHOLD: float = _get_float("RAG_SIMILARITY_THRESHOLD", 0.35)
+
+    # Backward-compat alias: APP_ENV was renamed to ENVIRONMENT.
+    # New code should use settings.ENVIRONMENT; old code using settings.APP_ENV still works.
+    @property
+    def APP_ENV(self) -> str:  # noqa: N802
+        return self.ENVIRONMENT
+
+    @APP_ENV.setter
+    def APP_ENV(self, value: str) -> None:
+        self.ENVIRONMENT = value
+
+    # Lowercase JWT aliases for legacy code that uses settings.jwt_*
+    @property
+    def jwt_secret_key(self) -> str:
+        return self.JWT_SECRET_KEY
+
+    @property
+    def jwt_algorithm(self) -> str:
+        return self.JWT_ALGORITHM
+
+    @property
+    def jwt_expiration_minutes(self) -> int:
+        return self.JWT_EXPIRATION_MINUTES
+
     @property
     def database_path(self) -> Path:
         """Resolve the sqlite:/// URL to a path (absolute or project-relative)."""
