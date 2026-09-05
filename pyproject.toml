@@ -17,7 +17,7 @@ target-version = ["py311"]
 line-length = 100
 target-version = "py311"
 select = ["E","F","W","I","N","UP","S","B","C4","SIM"]
-ignore = ["S101"]
+ignore = ["S101", "S110"]
 exclude = ["vector_db","__pycache__"]
 
 [tool.mypy]

@@ -79,12 +79,8 @@ class Settings:
     MAX_MESSAGE_LENGTH: int = _get_int("MAX_MESSAGE_LENGTH", 10000)
 
     MODEL_PATH: Path = BASE_DIR / _get("MODEL_PATH", "models/spam_classifier.joblib")
-    VECTORIZER_PATH: Path = BASE_DIR / _get(
-        "VECTORIZER_PATH", "models/tfidf_vectorizer.joblib"
-    )
-    MODEL_METADATA_PATH: Path = BASE_DIR / _get(
-        "MODEL_METADATA_PATH", "models/model_metadata.json"
-    )
+    VECTORIZER_PATH: Path = BASE_DIR / _get("VECTORIZER_PATH", "models/tfidf_vectorizer.joblib")
+    MODEL_METADATA_PATH: Path = BASE_DIR / _get("MODEL_METADATA_PATH", "models/model_metadata.json")
     MODEL_METRICS_PATH: Path = BASE_DIR / _get(
         "MODEL_METRICS_PATH", "models/evaluation_report.json"
     )
@@ -103,9 +99,7 @@ class Settings:
     SEMANTIC_CACHE_SIZE: int = _get_int("SEMANTIC_CACHE_SIZE", 512)
     SEMANTIC_BATCH_SIZE: int = _get_int("SEMANTIC_BATCH_SIZE", 16)
     SEMANTIC_DEVICE: str = _get("SEMANTIC_DEVICE", "auto").lower()
-    SEMANTIC_LANGUAGE_DETECTION: str = _get(
-        "SEMANTIC_LANGUAGE_DETECTION", "auto"
-    ).lower()
+    SEMANTIC_LANGUAGE_DETECTION: str = _get("SEMANTIC_LANGUAGE_DETECTION", "auto").lower()
 
     # Intent & Behavior Analysis Engine (Phase 6).
     # Deterministic, configurable thresholds. No classification.
@@ -171,7 +165,7 @@ class Settings:
         return self.ENVIRONMENT
 
     @APP_ENV.setter
-    def APP_ENV(self, value: str) -> None:
+    def APP_ENV(self, value: str) -> None:  # noqa: N802
         self.ENVIRONMENT = value
 
     # Lowercase JWT aliases for legacy code that uses settings.jwt_*
