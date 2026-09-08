@@ -111,6 +111,7 @@ def create_app(registry: ServiceRegistry | None = None) -> FastAPI:
         errs = settings.validate()
         if errs:
             raise RuntimeError("Config validation failed: " + "; ".join(errs))
+        logger.info("Startup: initializing database ...")
         init_db()
         mark_started()
         logger.info(
@@ -120,6 +121,34 @@ def create_app(registry: ServiceRegistry | None = None) -> FastAPI:
             settings.database_path,
             settings.CONFIG_VERSION,
         )
+        # Warm vector store ONCE (reuse collection, never rebuild on page load)
+        try:
+            from app.rag.retriever import retriever
+
+            # This warms _backend_cache and avoids 80s Chroma init on first request
+            store = retriever.store
+            info = retriever.status()
+            logger.info(
+                "Vector store warmed: backend=%s, ready=%s, chunks=%s (path=%s)",
+                info.get("backend"),
+                info.get("ready"),
+                info.get("chunk_count"),
+                getattr(store, "path", "?"),
+            )
+        except Exception as exc:
+            logger.warning("Vector store warmup failed (non-fatal): %s", exc)
+
+        # Warm ML model ONCE (avoid lazy load on first analyze)
+        try:
+            from app.ml.classifier import classifier
+
+            alg = classifier.algorithm_name
+            logger.info("ML model warmed: %s (path=%s)", alg, settings.MODEL_PATH)
+        except Exception as exc:
+            logger.warning("ML model warmup failed (will load on first request): %s", exc)
+
+        logger.info("Startup complete: vector store, models, database initialized once (no duplicate init)")
+
         try:
             yield
         finally:
