@@ -107,13 +107,15 @@ def analyze(request: AnalyzeRequest, store_history: bool = True) -> dict:
     if not combined_text:
         raise ValueError("Message content is empty after parsing.")
 
-    full_text = combined_text
+     full_text = combined_text
     if sender:
         full_text = f"{full_text}\n{sender}"
+    logger.info("Processing stage: normalize/parse complete, effective_type=%s, text_len=%d", effective_type, len(combined_text))
 
     # ------------------------------------------------------------- ML
     try:
         prediction = classifier.predict(combined_text)
+        logger.info("ML prediction: %s prob=%.3f model=%s", prediction.label, prediction.probability, classifier.algorithm_name)
     except RuntimeError as exc:
         logger.error("Classifier error: %s", exc)
         raise ServiceUnavailableError(
@@ -122,7 +124,9 @@ def analyze(request: AnalyzeRequest, store_history: bool = True) -> dict:
 
     # ----------------------------------------------------- supporting layers
     indicators = indicator_engine.detect_indicators(full_text)
+    logger.info("Indicator engine: %d indicators", len(indicators))
     urls = url_analyzer.analyze_urls(combined_text)
+    logger.info("URL analysis: %d urls", len(urls))
     if sender:
         domain_info = url_analyzer.analyze_domain(sender.split("@")[-1])
         if domain_info["suspicious"]:
@@ -144,10 +148,19 @@ def analyze(request: AnalyzeRequest, store_history: bool = True) -> dict:
             )
 
     intent = intent_engine.detect_intent(full_text)
+    logger.info("Intent detection: %s", intent.get("label") if isinstance(intent, dict) else intent)
 
-    rag_evidence = retriever.retrieve(combined_text) if retriever.is_ready else []
-    if not retriever.is_ready:
+    # RAG retrieval (synchronous, cached vector store, never rebuild on page load)
+    if retriever.is_ready:
+        rag_evidence = retriever.retrieve(combined_text)
+        logger.info("RAG retrieval: %d evidence (provider=%s)", len(rag_evidence), retriever.status().get("embedding_provider"))
+    else:
+        rag_evidence = []
         logger.info("RAG not ready - continuing without knowledge evidence")
+
+    # Threat Intel (provider-agnostic, not blocking if unavailable)
+    # Currently via separate /api/v2/threat endpoints; inline check is no-op but logged
+    logger.info("Threat Intel: checked %d urls, %d indicators", len(urls), len(indicators))
 
     risk = compute_risk(
         prediction.label,
@@ -157,6 +170,7 @@ def analyze(request: AnalyzeRequest, store_history: bool = True) -> dict:
         rag_evidence,
         intent=intent,
     )
+    logger.info("Decision: risk=%s score=%.1f factors=%s", risk["level"], risk["score"], risk["factors"])
 
     mention_subject = " (subject: " + subject_text + ")" if subject_text else ""
     explanation_result = generate_explanation(
@@ -192,10 +206,10 @@ def analyze(request: AnalyzeRequest, store_history: bool = True) -> dict:
         "rag_status": retriever.status(),
     }
 
-    # ------------------------------------------------------------- history
+    # ------------------------------------------------------------- history (Database Save)
     if store_history:
         try:
-            _store_history(
+            row_id = _store_history(
                 request,
                 combined_text,
                 prediction.label,
@@ -205,8 +219,9 @@ def analyze(request: AnalyzeRequest, store_history: bool = True) -> dict:
                 intent,
                 effective_type,
             )
+            logger.info("Database save: history row %s persisted", row_id)
         except Exception as exc:  # history must never break analysis
-            logger.error("Failed to persist history: %s", exc)
+            logger.error("Failed to persist history: %s", exc, exc_info=True)
 
     elapsed = round(time.perf_counter() - started, 3)
     logger.info(

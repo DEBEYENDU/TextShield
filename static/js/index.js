@@ -190,22 +190,48 @@
             analyzeBtn.innerHTML = '<span class="spinner"></span> Analyzing...';
         }
 
+        const payload = buildPayload();
+        console.log("[TextShield] Frontend request: analyze", payload);
+        // Frontend validation
+        const hasContent = payload.message && payload.message.trim() || payload.body && payload.body.trim() || payload.email_raw && payload.email_raw.trim() || payload.subject;
+        if (!hasContent || (payload.message !== undefined && !payload.message.trim() && !payload.body && !payload.email_raw)) {
+            // Let backend validate, but show immediate feedback if obviously empty
+            if (!payload.message || !payload.message.trim()) {
+                // For email, check body
+                if (payload.input_type !== "email" && (!payload.message || !payload.message.trim())) {
+                    showError("Please enter a message to analyze.");
+                    if (analyzeBtn) {
+                        analyzeBtn.disabled = false;
+                        analyzeBtn.textContent = "Analyze Message";
+                    }
+                    console.log("[TextShield] Frontend validation failed: empty message");
+                    return;
+                }
+            }
+        }
+
         try {
+            console.log("[TextShield] Frontend: sending API request to /api/analyze");
             const response = await fetch("/api/analyze", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(buildPayload()),
+                body: JSON.stringify(payload),
             });
-            const payload = await response.json().catch(() => ({}));
+            const data = await response.json().catch(() => ({}));
+            console.log("[TextShield] Frontend response:", response.status, data);
             if (!response.ok) {
-                const detail = (payload.detail || "Analysis failed.").replace(/^[\w.]+: /, "");
+                const detail = (data.detail || "Analysis failed.").replace(/^[\w.]+: /, "");
+                console.log("[TextShield] Frontend error: API returned", detail);
                 showError(detail);
                 return;
             }
+            console.log("[TextShield] Frontend: rendering result", data.classification);
             if (resultArea) resultArea.classList.remove("hidden");
-            renderResult(payload);
+            renderResult(data);
             if (resultArea) resultArea.scrollIntoView({ behavior: "smooth", block: "start" });
+            console.log("[TextShield] Frontend: result rendered");
         } catch (error) {
+            console.log("[TextShield] Frontend error: network failure", error);
             errorHandler(error, "Network error");
             showError("Network error - is the server running?");
         } finally {
