@@ -22,21 +22,21 @@ from __future__ import annotations
 
 import hashlib
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.core.config import settings
 from app.core.exceptions import ServiceUnavailableError
 from app.core.logging import get_logger
 from app.database import database as db
-from app.ml.classifier import SpamClassifier, classifier
 from app.ml import indicators as indicator_engine
-from app.ml import url_analyzer
 from app.ml import intent as intent_engine
+from app.ml import url_analyzer
+from app.ml.classifier import classifier
 from app.ml.input_detection import looks_like_raw_email, parse_raw_email
 from app.ml.preprocess import normalize_text
 from app.rag.generator import generate_explanation
 from app.rag.retriever import retriever
-from app.schemas.analysis import AnalyzeRequest, AnalysisResult
+from app.schemas.analysis import AnalyzeRequest
 from app.services.risk_engine import compute_risk
 
 logger = get_logger(__name__)
@@ -76,11 +76,7 @@ def analyze(request: AnalyzeRequest, store_history: bool = True) -> dict:
 
     # ------------------------------------------------------------- inputs
     effective_type = request.input_type
-    if (
-        effective_type == "text"
-        and request.message
-        and looks_like_raw_email(request.message)
-    ):
+    if effective_type == "text" and request.message and looks_like_raw_email(request.message):
         # Auto-detection: a raw email pasted into the generic text box is
         # upgraded to an email analysis (subject/sender/body parsed).
         effective_type = "email"
@@ -107,15 +103,24 @@ def analyze(request: AnalyzeRequest, store_history: bool = True) -> dict:
     if not combined_text:
         raise ValueError("Message content is empty after parsing.")
 
-     full_text = combined_text
+    full_text = combined_text
     if sender:
         full_text = f"{full_text}\n{sender}"
-    logger.info("Processing stage: normalize/parse complete, effective_type=%s, text_len=%d", effective_type, len(combined_text))
+    logger.info(
+        "Processing stage: normalize/parse complete, effective_type=%s, text_len=%d",
+        effective_type,
+        len(combined_text),
+    )
 
     # ------------------------------------------------------------- ML
     try:
         prediction = classifier.predict(combined_text)
-        logger.info("ML prediction: %s prob=%.3f model=%s", prediction.label, prediction.probability, classifier.algorithm_name)
+        logger.info(
+            "ML prediction: %s prob=%.3f model=%s",
+            prediction.label,
+            prediction.probability,
+            classifier.algorithm_name,
+        )
     except RuntimeError as exc:
         logger.error("Classifier error: %s", exc)
         raise ServiceUnavailableError(
@@ -153,7 +158,11 @@ def analyze(request: AnalyzeRequest, store_history: bool = True) -> dict:
     # RAG retrieval (synchronous, cached vector store, never rebuild on page load)
     if retriever.is_ready:
         rag_evidence = retriever.retrieve(combined_text)
-        logger.info("RAG retrieval: %d evidence (provider=%s)", len(rag_evidence), retriever.status().get("embedding_provider"))
+        logger.info(
+            "RAG retrieval: %d evidence (provider=%s)",
+            len(rag_evidence),
+            retriever.status().get("embedding_provider"),
+        )
     else:
         rag_evidence = []
         logger.info("RAG not ready - continuing without knowledge evidence")
@@ -170,7 +179,9 @@ def analyze(request: AnalyzeRequest, store_history: bool = True) -> dict:
         rag_evidence,
         intent=intent,
     )
-    logger.info("Decision: risk=%s score=%.1f factors=%s", risk["level"], risk["score"], risk["factors"])
+    logger.info(
+        "Decision: risk=%s score=%.1f factors=%s", risk["level"], risk["score"], risk["factors"]
+    )
 
     mention_subject = " (subject: " + subject_text + ")" if subject_text else ""
     explanation_result = generate_explanation(
@@ -252,7 +263,7 @@ def _store_history(
         cleaned = normalize_text(combined_text, mask_sensitive=False)
         preview = cleaned[: settings.HISTORY_PREVIEW_LENGTH]
     record = {
-        "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "timestamp": datetime.now(UTC).isoformat(timespec="seconds"),
         "input_type": effective_type,
         "message_hash": _hash_message(combined_text),
         "classification": label,
