@@ -16,6 +16,14 @@
                      spam: "#ef4444", ham: "#22c55e", blue: "#3b82f6",
                      sms: "#22d3ee", text: "#3b82f6", email: "#8b5cf6" };
 
+    function getCanvas(idList) {
+        for (const id of idList) {
+            const el = document.getElementById(id);
+            if (el) return el;
+        }
+        return null;
+    }
+
     function drawBars(canvas, labels, values, colors) {
         if (!canvas || !canvas.getContext) return;
         const ctx = canvas.getContext("2d");
@@ -115,6 +123,11 @@
             entries.map((e) => `<span><span class="swatch" style="background:${escapeHtml(e.color)}"></span>${escapeHtml(e.label)}: ${escapeHtml(e.value)}</span>`).join("");
     }
 
+    function setText(id, value) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+    }
+
     async function load() {
         try {
             const [statsRes, modelRes] = await Promise.all([
@@ -123,56 +136,88 @@
             const stats = await statsRes.json().catch(() => ({}));
             const model = await modelRes.json().catch(() => ({}));
 
-            const el = (id) => document.getElementById(id);
-            if (el("stat-total")) el("stat-total").textContent = stats.total_analyses ?? "-";
-            if (el("stat-spam")) el("stat-spam").textContent = stats.spam_count ?? "-";
-            if (el("stat-ham")) el("stat-ham").textContent = stats.ham_count ?? "-";
-            if (el("stat-pct")) el("stat-pct").textContent = stats.spam_percentage != null ? stats.spam_percentage + "%" : "-";
-            if (el("avg-conf")) el("avg-conf").textContent = stats.average_confidence != null ? (stats.average_confidence * 100).toFixed(1) + "%" : "-";
-            if (el("latest-at")) el("latest-at").textContent = stats.latest_analysis_at
-                ? new Date(stats.latest_analysis_at).toLocaleString() : "-";
-            if (el("ratio")) el("ratio").textContent = stats.ham_count
-                ? `1 : ${(stats.spam_count / Math.max(1, stats.ham_count)).toFixed(2)}` : "-";
-            if (el("model-name")) el("model-name").textContent = model.available ? model.algorithm : "not trained";
+            // Support both old (stat-total etc) and new (analytics-stats) layouts
+            setText("stat-total", stats.total_analyses ?? stats.total ?? "-");
+            setText("stat-spam", stats.spam_count ?? "-");
+            setText("stat-ham", stats.ham_count ?? "-");
+            setText("stat-pct", stats.spam_percentage != null ? stats.spam_percentage + "%" : "-");
+            setText("avg-conf", stats.average_confidence != null ? (stats.average_confidence * 100).toFixed(1) + "%" : "-");
+            setText("latest-at", stats.latest_analysis_at ? new Date(stats.latest_analysis_at).toLocaleString() : "-");
+            setText("ratio", stats.ham_count ? `1 : ${(stats.spam_count / Math.max(1, stats.ham_count)).toFixed(2)}` : "-");
+            setText("model-name", model.available ? model.algorithm : "not trained");
             const metrics = model.metrics || {};
-            if (el("model-f1")) el("model-f1").textContent = metrics.f1_spam != null ? metrics.f1_spam : "-";
-            if (el("model-acc")) el("model-acc").textContent = metrics.accuracy != null ? metrics.accuracy : "-";
+            setText("model-f1", metrics.f1_spam != null ? metrics.f1_spam : "-");
+            setText("model-acc", metrics.accuracy != null ? metrics.accuracy : "-");
 
+            // Fallback: if old stat elements not found but analytics-stats container exists, render summary there
+            const analyticsStats = document.getElementById("analytics-stats");
+            if (analyticsStats && !document.getElementById("stat-total")) {
+                analyticsStats.innerHTML = `
+                    <div class="stat"><strong>${escapeHtml(stats.total_analyses ?? 0)}</strong> total</div>
+                    <div class="stat"><strong>${escapeHtml(stats.spam_count ?? 0)}</strong> spam</div>
+                    <div class="stat"><strong>${escapeHtml(stats.ham_count ?? 0)}</strong> ham</div>
+                    <div class="stat">${escapeHtml(stats.spam_percentage ?? 0)}% spam</div>
+                    <div class="stat">avg conf ${(stats.average_confidence != null ? (stats.average_confidence*100).toFixed(1) : "-")}%</div>
+                `;
+            }
+
+            // Risk distribution - support both old and new canvas IDs
             const riskEntries = ["HIGH", "MEDIUM", "LOW"].map((level) => ({
                 label: level,
                 value: (stats.risk_distribution && stats.risk_distribution[level]) || 0,
                 color: COLORS[level],
             }));
-            const riskCanvas = document.getElementById("chart-risk");
+            const riskCanvas = getCanvas(["chart-risk", "chart-risk-distribution"]);
             if (riskCanvas) drawDonut(riskCanvas, riskEntries.filter((e) => e.value > 0));
             legend("legend-risk", riskEntries);
 
+            // Type distribution
             const typeEntries = Object.entries(stats.message_type_distribution || {}).map(([k, v]) => ({
                 label: k.toUpperCase(), value: v, color: COLORS[k] || COLORS.blue,
             }));
-            const typeCanvas = document.getElementById("chart-type");
+            const typeCanvas = getCanvas(["chart-type", "chart-message-type", "chart-spam-vs-ham"]);
             if (typeCanvas) {
-                drawDonut(typeCanvas, typeEntries);
+                drawDonut(typeCanvas, typeEntries.length ? typeEntries : [{label:"No data", value:1, color:"#334155"}]);
                 legend("legend-type", typeEntries);
             }
 
+            // Daily
             const days = stats.analyses_per_day || [];
-            const dailyCanvas = document.getElementById("chart-daily");
+            const dailyCanvas = getCanvas(["chart-daily", "chart-knowledge-usage", "chart-confidence-distribution", "chart-model-confidence"]);
             if (dailyCanvas) {
                 drawBars(dailyCanvas,
-                    days.map((d) => (d.date || "").slice(5)),
-                    days.map((d) => d.count || 0),
-                    days.map(() => "#22d3ee"));
+                    days.length ? days.map((d) => (d.date || "").slice(5)) : ["No data"],
+                    days.length ? days.map((d) => d.count || 0) : [0],
+                    days.length ? days.map(() => "#22d3ee") : ["#334155"]);
             }
+
+            // Additional new canvases: try to populate each if exists and not yet drawn
+            const spamVsHamCanvas = document.getElementById("chart-spam-vs-ham");
+            if (spamVsHamCanvas && spamVsHamCanvas !== typeCanvas) {
+                drawDonut(spamVsHamCanvas, [
+                    {label:"SPAM", value: stats.spam_count||0, color:COLORS.spam},
+                    {label:"HAM", value: stats.ham_count||0, color:COLORS.ham}
+                ]);
+            }
+            const manipCanvas = document.getElementById("chart-manipulation-techniques");
+            if (manipCanvas) {
+                const intentDist = stats.intent_distribution || {};
+                const entries = Object.entries(intentDist).map(([k,v])=>({label:k, value:v, color:COLORS.blue}));
+                if (entries.length) drawBars(manipCanvas, entries.map(e=>e.label), entries.map(e=>e.value), entries.map(e=>e.color));
+                else drawBars(manipCanvas, ["No data"], [0], ["#334155"]);
+            }
+
         } catch (error) {
             errorHandler(error, "Failed to load analytics");
-            const grid = document.querySelector(".stat-grid");
+            const grid = document.querySelector(".stat-grid") || document.getElementById("analytics-stats");
             if (grid) grid.innerHTML = `<div class="alert alert-error">Failed to load analytics: ${escapeHtml(error.message || error)}</div>`;
         }
     }
 
-    // Only run on analytics page
-    if (document.getElementById("chart-risk") || document.getElementById("stat-total")) {
+    // Only run on analytics page where any of the expected elements exist
+    if (document.getElementById("chart-risk") || document.getElementById("chart-spam-vs-ham") || document.getElementById("stat-total") || document.getElementById("analytics-stats")) {
+        load();
+    } else if (document.getElementById("analytics-stats")) {
         load();
     }
 })();
