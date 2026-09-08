@@ -2,13 +2,22 @@
 (() => {
     "use strict";
 
+    const _ts = window.textshield || window.TextShield || window.App || {};
+    if (!window.textshield) {
+        console.warn("[TextShield] common.js not loaded before analytics.js - using fallback");
+        window.textshield = _ts;
+    }
+    const escapeHtml = (_ts && _ts.escapeHtml) || function (v) {
+        return String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    };
+    const errorHandler = (_ts && _ts.errorHandler) || console.error;
+
     const COLORS = { HIGH: "#ef4444", MEDIUM: "#f59e0b", LOW: "#22c55e",
                      spam: "#ef4444", ham: "#22c55e", blue: "#3b82f6",
                      sms: "#22d3ee", text: "#3b82f6", email: "#8b5cf6" };
 
-    const { escapeHtml } = window.textshield;
-
     function drawBars(canvas, labels, values, colors) {
+        if (!canvas || !canvas.getContext) return;
         const ctx = canvas.getContext("2d");
         const dpr = window.devicePixelRatio || 1;
         const w = canvas.clientWidth || 400;
@@ -26,7 +35,6 @@
         const slot = n ? innerW / n : innerW;
         const barW = Math.min(46, slot * 0.55);
 
-        // grid
         ctx.strokeStyle = "rgba(148,163,255,0.12)";
         ctx.fillStyle = "#8fa1c8";
         ctx.font = "10px Segoe UI, sans-serif";
@@ -57,6 +65,7 @@
     }
 
     function drawDonut(canvas, entries) {
+        if (!canvas || !canvas.getContext) return;
         const ctx = canvas.getContext("2d");
         const dpr = window.devicePixelRatio || 1;
         const w = canvas.clientWidth || 400;
@@ -100,55 +109,70 @@
     }
 
     function legend(containerId, entries) {
-        document.getElementById(containerId).innerHTML =
-            entries.map((e) => `<span><span class="swatch" style="background:${e.color}"></span>${e.label}: ${e.value}</span>`).join("");
+        const el = document.getElementById(containerId);
+        if (!el) return;
+        el.innerHTML =
+            entries.map((e) => `<span><span class="swatch" style="background:${escapeHtml(e.color)}"></span>${escapeHtml(e.label)}: ${escapeHtml(e.value)}</span>`).join("");
     }
 
     async function load() {
-        const [statsRes, modelRes] = await Promise.all([
-            fetch("/api/stats"), fetch("/api/model-info"),
-        ]);
-        const stats = await statsRes.json();
-        const model = await modelRes.json();
+        try {
+            const [statsRes, modelRes] = await Promise.all([
+                fetch("/api/stats"), fetch("/api/model-info"),
+            ]);
+            const stats = await statsRes.json().catch(() => ({}));
+            const model = await modelRes.json().catch(() => ({}));
 
-        document.getElementById("stat-total").textContent = stats.total_analyses;
-        document.getElementById("stat-spam").textContent = stats.spam_count;
-        document.getElementById("stat-ham").textContent = stats.ham_count;
-        document.getElementById("stat-pct").textContent = stats.spam_percentage + "%";
-        document.getElementById("avg-conf").textContent = (stats.average_confidence * 100).toFixed(1) + "%";
-        document.getElementById("latest-at").textContent = stats.latest_analysis_at
-            ? new Date(stats.latest_analysis_at).toLocaleString() : "-";
-        document.getElementById("ratio").textContent = stats.ham_count
-            ? `1 : ${(stats.spam_count / Math.max(1, stats.ham_count)).toFixed(2)}` : "-";
-        document.getElementById("model-name").textContent = model.available ? model.algorithm : "not trained";
-        const metrics = model.metrics || {};
-        document.getElementById("model-f1").textContent = metrics.f1_spam != null ? metrics.f1_spam : "-";
-        document.getElementById("model-acc").textContent = metrics.accuracy != null ? metrics.accuracy : "-";
+            const el = (id) => document.getElementById(id);
+            if (el("stat-total")) el("stat-total").textContent = stats.total_analyses ?? "-";
+            if (el("stat-spam")) el("stat-spam").textContent = stats.spam_count ?? "-";
+            if (el("stat-ham")) el("stat-ham").textContent = stats.ham_count ?? "-";
+            if (el("stat-pct")) el("stat-pct").textContent = stats.spam_percentage != null ? stats.spam_percentage + "%" : "-";
+            if (el("avg-conf")) el("avg-conf").textContent = stats.average_confidence != null ? (stats.average_confidence * 100).toFixed(1) + "%" : "-";
+            if (el("latest-at")) el("latest-at").textContent = stats.latest_analysis_at
+                ? new Date(stats.latest_analysis_at).toLocaleString() : "-";
+            if (el("ratio")) el("ratio").textContent = stats.ham_count
+                ? `1 : ${(stats.spam_count / Math.max(1, stats.ham_count)).toFixed(2)}` : "-";
+            if (el("model-name")) el("model-name").textContent = model.available ? model.algorithm : "not trained";
+            const metrics = model.metrics || {};
+            if (el("model-f1")) el("model-f1").textContent = metrics.f1_spam != null ? metrics.f1_spam : "-";
+            if (el("model-acc")) el("model-acc").textContent = metrics.accuracy != null ? metrics.accuracy : "-";
 
-        const riskEntries = ["HIGH", "MEDIUM", "LOW"].map((level) => ({
-            label: level,
-            value: stats.risk_distribution[level] || 0,
-            color: COLORS[level],
-        }));
-        drawDonut(document.getElementById("chart-risk"),
-            riskEntries.filter((e) => e.value > 0));
-        legend("legend-risk", riskEntries);
+            const riskEntries = ["HIGH", "MEDIUM", "LOW"].map((level) => ({
+                label: level,
+                value: (stats.risk_distribution && stats.risk_distribution[level]) || 0,
+                color: COLORS[level],
+            }));
+            const riskCanvas = document.getElementById("chart-risk");
+            if (riskCanvas) drawDonut(riskCanvas, riskEntries.filter((e) => e.value > 0));
+            legend("legend-risk", riskEntries);
 
-        const typeEntries = Object.entries(stats.message_type_distribution).map(([k, v]) => ({
-            label: k.toUpperCase(), value: v, color: COLORS[k] || COLORS.blue,
-        }));
-        drawDonut(document.getElementById("chart-type"), typeEntries);
-        legend("legend-type", typeEntries);
+            const typeEntries = Object.entries(stats.message_type_distribution || {}).map(([k, v]) => ({
+                label: k.toUpperCase(), value: v, color: COLORS[k] || COLORS.blue,
+            }));
+            const typeCanvas = document.getElementById("chart-type");
+            if (typeCanvas) {
+                drawDonut(typeCanvas, typeEntries);
+                legend("legend-type", typeEntries);
+            }
 
-        const days = stats.analyses_per_day || [];
-        drawBars(document.getElementById("chart-daily"),
-            days.map((d) => d.date.slice(5)),
-            days.map((d) => d.count),
-            days.map(() => "#22d3ee"));
+            const days = stats.analyses_per_day || [];
+            const dailyCanvas = document.getElementById("chart-daily");
+            if (dailyCanvas) {
+                drawBars(dailyCanvas,
+                    days.map((d) => (d.date || "").slice(5)),
+                    days.map((d) => d.count || 0),
+                    days.map(() => "#22d3ee"));
+            }
+        } catch (error) {
+            errorHandler(error, "Failed to load analytics");
+            const grid = document.querySelector(".stat-grid");
+            if (grid) grid.innerHTML = `<div class="alert alert-error">Failed to load analytics: ${escapeHtml(error.message || error)}</div>`;
+        }
     }
 
-    load().catch((error) => {
-        document.querySelector(".stat-grid").innerHTML =
-            `<div class="alert alert-error">Failed to load analytics: ${escapeHtml(error.message)}</div>`;
-    });
+    // Only run on analytics page
+    if (document.getElementById("chart-risk") || document.getElementById("stat-total")) {
+        load();
+    }
 })();
