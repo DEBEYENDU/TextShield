@@ -12,17 +12,17 @@
         <button class="tab-btn" data-tab="email" role="tab">EMAIL</button>
     </div>
 
-    <form id="analyze-form">
+    <form id="analyze-form" novalidate>
         <div class="tab-panel active" data-panel="sms">
             <div class="field">
                 <label for="sms-message">Message</label>
-                <textarea id="sms-message" maxlength="10000" placeholder="e.g. Congratulations! You have won Rs.50,000. Click here to claim." required></textarea>
+                <textarea id="sms-message" maxlength="10000" placeholder="e.g. Congratulations! You have won Rs.50,000. Click here to claim."></textarea>
             </div>
         </div>
         <div class="tab-panel" data-panel="text">
             <div class="field">
                 <label for="text-message">Message</label>
-                <textarea id="text-message" maxlength="10000" placeholder="Paste any text message..." required></textarea>
+                <textarea id="text-message" maxlength="10000" placeholder="Paste any text message..."></textarea>
             </div>
         </div>
         <div class="tab-panel" data-panel="email">
@@ -38,7 +38,7 @@
             </div>
             <div class="field">
                 <label for="email-body">Body</label>
-                <textarea id="email-body" maxlength="10000" placeholder="Email body..." required></textarea>
+                <textarea id="email-body" maxlength="10000" placeholder="Email body..."></textarea>
             </div>
             <div class="field">
                 <label for="email-raw">Or paste a complete raw email (optional)</label>
