@@ -170,3 +170,52 @@ class GraphReasoner:
             if len(out) >= 5:
                 break
         return out
+
+
+def build_and_reason(text: str, understanding: dict, sender: str = "",
+                     store: "GraphStore | None" = None) -> dict:
+    """One-call orchestration: build message graph, reason, persist learning.
+
+    Returns {message_graph, verdict, expansion_terms, graph_size}.
+    Never raises — callers treat the graph as optional evidence.
+    """
+    from app.knowledge_graph import graph_store as store_mod
+    from app.knowledge_graph.relationship_builder import RelationshipBuilder
+
+    profile = (understanding or {}).get("profile", {})
+    entities = (understanding or {}).get("entities", {})
+    threat = (understanding or {}).get("threat", {})
+    legitimacy = (understanding or {}).get("legitimacy", {})
+    builder = RelationshipBuilder()
+    message_graph = builder.build(text, entities, profile, threat, legitimacy, sender)
+    backend = store or store_mod.open_graph_store()
+    knowledge = backend.load()
+    verdict = GraphReasoner(knowledge).reason(message_graph, profile, threat, legitimacy)
+    lean = (understanding or {}).get("evidence", {}).get("evidence_lean", "mixed")
+    try:
+        backend.merge_message_graph(
+            message_graph,
+            threat_leaning=(lean == "threat-leaning"),
+            legit_leaning=(lean == "trust-leaning"),
+        )
+    except Exception:
+        pass
+    terms: list[str] = []
+    for key in ("known_organizations", "campaign_matches", "scam_linked_entities"):
+        terms.extend(verdict.get(key, []))
+    terms.extend(verdict.get("known_domains", []))
+    # threat families translate into KB-style retrieval terms
+    family_terms = {"credential_harvesting": "credential theft",
+                    "sensitive_info_request": "KYC identity theft",
+                    "suspicious_url": "phishing URL", "lottery": "lottery fraud",
+                    "investment_scam": "investment scam",
+                    "crypto_scam": "crypto scam", "reward_bait": "reward scam"}
+    for fam in threat.get("families", []):
+        if fam in family_terms:
+            terms.append(family_terms[fam])
+    seen: set[str] = set()
+    expansion = [t for t in terms if t and not (t.lower() in seen or seen.add(t.lower()))]
+    return {"message_graph": message_graph, "verdict": verdict,
+            "expansion_terms": expansion[:12],
+            "graph_size": {"nodes": len(knowledge.nodes),
+                           "edges": knowledge.edge_count()}}

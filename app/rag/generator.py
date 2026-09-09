@@ -58,6 +58,9 @@ RISK LEVEL: {data.get("risk_level")}
 MESSAGE TYPE: {data.get("message_type")}
 SENDER INTENT: {_format_intent(data.get("intent"))}
 
+GRAPH CONTEXT (entity & relationship evidence — treat as context, not verdict):
+{data.get("graph_context", "(no graph context)")}
+
 Respond with the JSON object only.
 """
 

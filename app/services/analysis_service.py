@@ -187,6 +187,56 @@ def analyze(request: AnalyzeRequest, store_history: bool = True) -> dict:
         rag_evidence = []
         logger.info("RAG not ready - continuing without knowledge evidence")
 
+    # ------------------------------------------- v4 knowledge graph (RFC-003)
+    # Context graph reasoning is additive: per-message graph, verdict with
+    # trust/threat adjustments (reported, never applied to stored scores),
+    # and graph-guided extra retrieval kept in a SEPARATE evidence list so
+    # the primary RAG contract is untouched.
+    knowledge_graph: dict = {}
+    graph_rag_evidence: list = []
+    try:
+        from app.knowledge_graph.graph_reasoner import build_and_reason
+        from app.knowledge_graph.serializers import llm_context_block, to_cytoscape
+
+        kg = build_and_reason(combined_text, understanding, sender=sender)
+        verdict = kg["verdict"]
+        if retriever.is_ready and kg["expansion_terms"]:
+            expanded = combined_text + " " + " ".join(kg["expansion_terms"])
+            try:
+                extra = retriever.retrieve(expanded)
+                seen_ids = {e.get("id") for e in rag_evidence}
+                graph_rag_evidence = [e for e in extra if e.get("id") not in seen_ids][:3]
+            except Exception as exc:
+                logger.warning("Graph-guided retrieval failed: %s", exc)
+        knowledge_graph = {
+            "node_count": len(kg["message_graph"].nodes),
+            "edge_count": kg["message_graph"].edge_count(),
+            "known_organizations": verdict["known_organizations"],
+            "campaign_matches": verdict["campaign_matches"],
+            "unknown_domains": verdict["unknown_domains"],
+            "trust_adjustment": verdict["trust_adjustment"],
+            "threat_adjustment": verdict["threat_adjustment"],
+            "adjusted_trust": verdict["adjusted_trust"],
+            "adjusted_threat": verdict["adjusted_threat"],
+            "confidence": verdict["confidence"],
+            "reasons": verdict["reasons"],
+            "expansion_terms": kg["expansion_terms"],
+            "graph_context": llm_context_block(verdict),
+            "visualization": to_cytoscape(kg["message_graph"]),
+            "store_size": kg["graph_size"],
+        }
+        logger.info(
+            "Knowledge graph: nodes=%d edges=%d known_orgs=%s campaigns=%s "
+            "trust_adj=%+.3f threat_adj=%+.3f graph_rag=%d",
+            knowledge_graph["node_count"], knowledge_graph["edge_count"],
+            verdict["known_organizations"], verdict["campaign_matches"],
+            verdict["trust_adjustment"], verdict["threat_adjustment"],
+            len(graph_rag_evidence),
+        )
+    except Exception as exc:  # graph must never break analysis
+        logger.warning("Knowledge graph failed: %s", exc)
+        knowledge_graph = {}
+
     # Threat Intel (provider-agnostic, not blocking if unavailable)
     # Currently via separate /api/v2/threat endpoints; inline check is no-op but logged
     logger.info("Threat Intel: checked %d urls, %d indicators", len(urls), len(indicators))
@@ -215,6 +265,7 @@ def analyze(request: AnalyzeRequest, store_history: bool = True) -> dict:
             "risk_level": risk["level"],
             "message_type": effective_type,
             "intent": intent,
+            "graph_context": knowledge_graph.get("graph_context", ""),
         }
     )
 
@@ -238,6 +289,9 @@ def analyze(request: AnalyzeRequest, store_history: bool = True) -> dict:
         # v4 understanding (additive; filtered by response_model on v1 API)
         "understanding": understanding,
         "message_profile": understanding.get("profile", {}),
+        # v4 knowledge graph (additive)
+        "knowledge_graph": knowledge_graph,
+        "graph_rag_evidence": graph_rag_evidence,
     }
 
     # ------------------------------------------------------------- history (Database Save)
