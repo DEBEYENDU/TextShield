@@ -45,8 +45,12 @@ def normalize_text_value(value: str) -> str:
 
 def normalize_org(value: str) -> str:
     text = normalize_text_value(value)
-    text = _LEGAL_SUFFIXES.sub("", text).strip()
-    return _CANONICAL_LOOKUP.get(text, text) or text
+    if text in _CANONICAL_LOOKUP:  # aliases first: "State Bank" must not lose "bank"
+        return _CANONICAL_LOOKUP[text]
+    stripped = _LEGAL_SUFFIXES.sub("", text).strip()
+    if stripped in _CANONICAL_LOOKUP:
+        return _CANONICAL_LOOKUP[stripped]
+    return _CANONICAL_LOOKUP.get(text, stripped or text)
 
 
 def normalize_domain(value: str) -> str:

@@ -47,14 +47,14 @@ class GraphReasoner:
             if node.type in {"ORGANIZATION", "BANK", "COMPANY", "UNIVERSITY",
                              "COLLEGE", "GOVERNMENT"}:
                 if known is not None and known.attrs.get("trusted"):
-                    known_orgs.append(node.label)
+                    known_orgs.append(known.label)
                     trust_delta += 0.08
-                    reasons.append(f"Organization known & trusted: {node.label} "
+                    reasons.append(f"Organization known & trusted: {known.label} "
                                    f"({known.sightings} prior sightings)")
                 elif known is not None:
-                    known_orgs.append(node.label)
+                    known_orgs.append(known.label)
                     trust_delta += 0.03
-                    reasons.append(f"Organization seen before: {node.label}")
+                    reasons.append(f"Organization seen before: {known.label}")
                 # scam proximity: path to any malicious node?
                 scam = self._nearest_malicious(node.id)
                 if scam is not None:
