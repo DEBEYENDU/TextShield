@@ -97,6 +97,30 @@ class GraphReasoner:
                             self.graph.similarity(node.id, nid) > 0:
                         pass  # similarity across stores is per-graph; skip
 
+        # threat-family -> known campaign resolution (e.g. credential
+        # harvesting in an SBI message resolves the seeded KYC Scam campaign)
+        family_campaigns = {
+            "credential_harvesting": "KYC Scam",
+            "sensitive_info_request": "KYC Scam",
+            "credential_request": "KYC Scam",
+            "lottery": "Lottery Fraud",
+            "reward_bait": "Lottery Fraud",
+            "investment_scam": "Investment Doubling Scam",
+            "crypto_scam": "Investment Doubling Scam",
+            "remote_access_request": "Remote Access Refund Scam",
+            "suspicious_url": "KYC Scam",
+        }
+        msg_families = {str(i.get("family", "")).lower()
+                        for i in threat.get("indicators", [])}
+        for family, campaign in family_campaigns.items():
+            if family in msg_families and campaign not in campaign_matches:
+                hit = self.query.campaign_lookup(campaign)
+                if hit is not None:
+                    campaign_matches.append(hit["node"]["label"])
+                    threat_delta += 0.12
+                    reasons.append(f"Threat pattern matches known campaign: "
+                                   f"{hit['node']['label']} ({family})")
+
         # resemblance to earlier legitimate communications
         legit_nodes = [n for n in self.graph.nodes.values()
                        if n.legit_hits > n.threat_hits and n.type != "EVENT"]
@@ -190,6 +214,11 @@ def build_and_reason(text: str, understanding: dict, sender: str = "",
     message_graph = builder.build(text, entities, profile, threat, legitimacy, sender)
     backend = store or store_mod.open_graph_store()
     knowledge = backend.load()
+    # gazetteer pass: resolve known entities the extractor may have missed
+    try:
+        builder.link_known(message_graph, text, knowledge)
+    except Exception:
+        pass
     verdict = GraphReasoner(knowledge).reason(message_graph, profile, threat, legitimacy)
     lean = (understanding or {}).get("evidence", {}).get("evidence_lean", "mixed")
     try:

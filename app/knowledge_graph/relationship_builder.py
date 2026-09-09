@@ -64,6 +64,44 @@ class RelationshipBuilder:
         self._sender_edges(graph, message_id, sender)
         return graph
 
+    # ------------------------------------------- known-entity gazetteer pass
+    def link_known(self, graph: KnowledgeGraph, text: str,
+                   knowledge: "KnowledgeGraph") -> KnowledgeGraph:
+        """Match message text against accumulated graph entities.
+
+        Catches known organizations the regex extractor misses
+        (e.g. bare "Technolearn"), answering "Is this organization known?"
+        directly from graph memory.
+        """
+        lowered = f" {(text or '').lower()} "
+        message_roots = [n for n in graph.nodes if n.startswith("MESSAGE:")]
+        if not message_roots:
+            return graph
+        root = message_roots[0]
+        for node in knowledge.nodes.values():
+            if node.type not in {"ORGANIZATION", "BANK", "COMPANY", "UNIVERSITY",
+                                 "COLLEGE", "GOVERNMENT", "CAMPAIGN", "SCAM"}:
+                continue
+            if node.id in graph.nodes:
+                continue
+            hit = False
+            for candidate in {node.normalized, node.label.lower()}:
+                if not candidate or len(candidate) < 3:
+                    continue
+                if re.search(r"(?<![a-z])" + re.escape(candidate) + r"(?![a-z])",
+                             lowered):
+                    hit = True
+                    break
+            if not hit:
+                continue
+            graph.add_node(Node(id=node.id, type=node.type, label=node.label,
+                                normalized=node.normalized, confidence=0.6,
+                                attrs={"group": "gazetteer"}))
+            graph.add_edge(Edge(src=root, dst=node.id, rel="MENTIONS",
+                                weight=0.6,
+                                evidence=f"known entity mentioned: {node.label}"))
+        return graph
+
     # ------------------------------------------------------- semantic edges
     def _semantic_edges(self, graph: KnowledgeGraph, node_ids: dict,
                         entities: dict, text: str) -> None:
