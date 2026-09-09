@@ -1,0 +1,119 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TextShield Enterprise Knowledge Metadata Schema v3.0",
+  "description": "Every knowledge document MUST begin with YAML frontmatter matching this schema.",
+  "type": "object",
+  "required": [
+    "id",
+    "title",
+    "category",
+    "subcategory",
+    "source",
+    "author",
+    "organization",
+    "published",
+    "last_updated",
+    "severity",
+    "confidence",
+    "language",
+    "country",
+    "industry",
+    "tags",
+    "summary",
+    "references",
+    "license",
+    "version"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Unique kebab-case identifier, e.g., sbi-kyc-2024"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 5,
+      "description": "Human-readable title"
+    },
+    "category": {
+      "type": "string",
+      "description": "Top-level category from taxonomy"
+    },
+    "subcategory": {
+      "type": "string",
+      "description": "Subcategory within category"
+    },
+    "source": {
+      "type": "string",
+      "description": "Source URL or identifier"
+    },
+    "author": {
+      "type": "string",
+      "description": "Author name"
+    },
+    "organization": {
+      "type": "string",
+      "description": "Publisher organization (e.g., CERT-In, RBI, CISA)"
+    },
+    "published": {
+      "type": "string",
+      "format": "date",
+      "description": "Original publication date YYYY-MM-DD"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date",
+      "description": "Last update date YYYY-MM-DD"
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "critical", "informational"],
+      "description": "Severity level"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Confidence 0.0-1.0"
+    },
+    "language": {
+      "type": "string",
+      "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
+      "description": "Language code e.g., en, en-IN, hi"
+    },
+    "country": {
+      "type": "string",
+      "description": "Country code or name"
+    },
+    "industry": {
+      "type": "string",
+      "description": "Industry e.g., banking, telecom, government"
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "Search tags"
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 20,
+      "description": "1-2 sentence summary"
+    },
+    "references": {
+      "type": "array",
+      "items": { "type": "string", "format": "uri" },
+      "description": "Reference URLs"
+    },
+    "license": {
+      "type": "string",
+      "description": "License e.g., CC-BY-4.0, internal"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Semantic version"
+    }
+  },
+  "additionalProperties": false
+}

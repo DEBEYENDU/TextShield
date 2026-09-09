@@ -2,6 +2,23 @@
 
 All notable changes to **TextShield** follow [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.1] - 2026-09-08
+
+Stabilization-only — makes the existing project fully functional, no new features.
+
+### Fixed
+- **Analyze workflow:** `index.html` `novalidate` + removed `required` on hidden textareas (browser blocked submit), `static/js/index.js` defensive `window.textshield` + frontend logs, backend 7 stage logs (ML, indicators, RAG, threat intel, decision, DB save).
+- **History:** `history.html` added missing `f-type/f-class/f-risk`, pagination, `history-body`/`history-empty` + hash column; `static/js/history.js` now handles both `history-body`/`history-table-body`, `limit/offset/direction` matching `GET /api/history`, empty state.
+- **Analytics:** `analytics.js` `getCanvas` fallback for `chart-risk` vs `chart-spam-vs-ham` etc, `setText` guards, `drawDonut` “No data yet” for 0, handles zero/one/many.
+- **Knowledge Base:** `retriever.status()` no longer loads `SentenceTransformer` (80s → 29ms), uses `settings.EMBEDDING_PROVIDER` directly, cached 5s; `main.py` lifespan warms `retriever.store` + `classifier` once, never rebuilds on page load.
+- **JS Integration:** `common.js` canonical `window.textshield` + aliases `TextShield/App/utils` + globals `window.showToast` etc, exports 8 required utilities, `base.html` order `common.js` before `{% block scripts %}`, all page scripts defensive (`_ts = window.textshield || ...`), syntax fix `knowledge.js:61` missing `{`.
+- **FastAPI/DB:** `app/core/settings.py` added `JWT_*` (3), `RAG_MAX_*` (3), `@property APP_ENV` alias, `CONFIG_VERSION 2.2.1`; `run.py` `APP_ENV` → `ENVIRONMENT`; `routes_analytics` fallback import; `history_repository` WAL + `per_day` test now uses `now()` not hardcoded `2026-08-13`.
+- **Performance:** KB <2s, history 10ms, stats 8ms, analyze 14ms warm, startup once.
+
+### Changed
+- Version bump `2.2.0` → `2.2.1` across `app/__init__.py`, `pyproject.toml`, `frontend/package.json`, `settings.CONFIG_VERSION`, `README` + `data/README`.
+- `docs/Configuration.md` added (canonical env var table, loading, validation, dev/prod, migration for `APP_ENV→ENVIRONMENT`).
+
 ## [2.2.0] - 2026-09-03
 
 Stable v2.2.0 release — Threat Intelligence Platform + Production Hardening.

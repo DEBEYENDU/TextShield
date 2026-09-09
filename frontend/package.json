@@ -1,6 +1,6 @@
 {
   "name": "textshield-frontend",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "TextShield dashboard frontend",
   "private": true,
   "scripts": {

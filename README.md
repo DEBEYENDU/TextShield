@@ -1,8 +1,11 @@
-# TextShield
+# TextShield `v2.2.1` — Stabilization Release
 
 ### AI-Powered Multichannel Spam & Ham Detection with RAG-Based Explainable Analysis
 
 > **Detect Spam. Understand the Risk. Stay Protected.**
+> **Current:** `v2.2.1` (stabilization) on `v2.2-dev` — fully functional local app, all UI/API/DB flows verified, KB <2s, 0 JS errors.
+
+> **Status:** ✅ Production-quality local application — Analyze → History → Analytics → Knowledge Base all verified end-to-end (see `docs/stabilization/`).
 
 TextShield is a production-quality academic project that detects whether a
 message is **SPAM** or **HAM** across three channels — **SMS, general text,
@@ -44,6 +47,27 @@ indicators, and explains that the advanced service is unavailable.
 - [20. Security Considerations](#20-security-considerations)
 - [21. Running the Tests](#21-running-the-tests)
 - [22. Documentation](#22-documentation)
+- [23. Project Overview (v2.2.1)](#23-project-overview-v221)
+- [24. Quick Start](#24-quick-start)
+- [25. Configuration](#25-configuration)
+- [26. REST API](#26-rest-api)
+- [27. SDKs](#27-sdks)
+- [28. Threat Intelligence (v2.2)](#28-threat-intelligence-v22)
+- [29. RAG](#29-rag)
+- [30. Hybrid ML](#30-hybrid-ml)
+- [31. Decision Engine](#31-decision-engine)
+- [32. Evidence Engine](#32-evidence-engine)
+- [33. Screenshots](#33-screenshots)
+- [34. Project Structure](#34-project-structure)
+- [35. Roadmap](#35-roadmap)
+- [36. Contributing](#36-contributing)
+- [37. License](#37-license)
+- [38. Citation](#38-citation)
+- [39. Acknowledgements](#39-acknowledgements)
+- [40. Known Limitations](#40-known-limitations)
+- [41. Future Work](#41-future-work)
+- [42. Recent Stabilization (v2.2.1)](#42-recent-stabilization-v221)
+- [43. Git Workflow](#43-git-workflow)
 
 ---
 
@@ -842,7 +866,7 @@ See Section 6 canonical tree (includes `app/threat/`, `app/evidence/`, `frontend
 
 ## 36. Contributing
 
-PRs welcome! Branch `v2.2-dev` → `main`. Run `scripts/lint.sh`, `black`, `ruff`, `mypy`, `pytest -q --cov`, `benchmarks/suite.py`. See commit conventions in Section 23 Git Workflow. Issues at https://github.com/DEBEYENDU/TextShield/issues.
+PRs welcome! Branch `v2.2-dev` → `main`. Run `scripts/lint.sh`, `black`, `ruff`, `mypy`, `pytest -q --cov`, `benchmarks/suite.py`. See commit conventions in Section 43 Git Workflow. Issues at https://github.com/DEBEYENDU/TextShield/issues.
 
 ## 37. License
 
@@ -855,7 +879,7 @@ MIT — see `LICENSE` (to be added if missing; default MIT as per `pyproject.tom
   title={TextShield: AI-powered spam & ham detection with RAG and threat intelligence},
   author={Karmakar, Debeyendu Nirmal},
   year={2026},
-  version={2.2.0},
+  version={2.2.1},
   url={https://github.com/DEBEYENDU/TextShield}
 }
 ```
@@ -871,6 +895,7 @@ Supervisor: NA, B.E. Computer Engineering; libraries: scikit-learn, FastAPI, Chr
 - Hashing fallback lower semantic quality.
 - SQLite WAL single-instance (migrate to Postgres for scale).
 - See `docs/production/Known_Issues.md` + Section 18.
+- **Stabilization:** All v2.2.0 UI/API flows now verified (Analyze→History→Analytics→KB <2s, 0 JS errors) — see `docs/stabilization/`.
 
 ## 41. Future Work
 
@@ -878,7 +903,24 @@ Stream scanner, multilingual, BERT classifier, additional providers, SPA+WebSock
 
 ---
 
-## 23. Git Workflow
+## 42. Recent Stabilization (v2.2.1) — 2026-09-08
+
+**Stabilization-only, no new features.** Makes the existing project fully functional:
+
+- **Analyze workflow:** Fixed `required` on hidden textareas + `novalidate` (no request sent), defensive `window.textshield` (no destructuring throw), frontend validation + spinner, backend logs for every stage (ML, indicators, RAG, threat intel, decision, DB save), result rendering guards.
+- **History:** Added missing filters/pagination/empty state to `history.html` + `tbody id="history-body"` vs `history-table-body` compat, `history.js` now uses `limit/offset/direction` matching `GET /api/history`, handles 0/1/many, `db.insert_analysis` commits verified.
+- **Analytics:** `analytics.js` now `getCanvas` handles both old (`chart-risk`) and new (`chart-spam-vs-ham` etc) IDs, `setText` guards, `drawDonut` “No data yet” for 0, `drawBars` for 1/many; backend `per_day` test now uses `now()` not hardcoded old date.
+- **Knowledge Base:** `retriever.status()` no longer loads `SentenceTransformer` (was 80s download), uses `settings.EMBEDDING_PROVIDER` directly, cached 5s; `main.py` lifespan warms `retriever.store` + `classifier` once, never rebuilds on page load → **80s → 29ms** (<2s, shows Loading→Loaded/Empty, never infinite).
+- **JS Integration:** `common.js` canonical `window.textshield` + aliases `TextShield/App/utils` + global `window.showToast` etc, exports 8 required utilities (`escapeHtml, apiRequest, formatDate, showToast, hideSpinner, showSpinner, errorHandler, config`), `base.html` order `common.js` **before** `{% block scripts %}`, all page scripts defensive (`_ts = window.textshield || ...`), syntax fix `knowledge.js:61` missing `{`.
+- **FastAPI/DB:** Added `/api/liveness` + `/healthz`, fixed `routes_analytics` `from analytics import` → fallback, `history_repository` WAL + `busy_timeout`, `per_day` uses `substr` date compare.
+- **Performance:** KB <2s, history 10ms, stats 8ms, analyze 14ms warm (<5s), startup once.
+- **Tests:** Added `tests/test_integration_stabilization.py` 6 tests (analyze→history→analytics→KB→refresh→persist, KB<2s, zero/one/many) + `tests/test_config_startup.py` 8; total **182 passed** (only `test_knowledge_base` missing `knowledge_loader` remains pre-existing). See `docs/stabilization/`.
+
+**Workflow:** `v2.2-dev` → `main` via conventional commits (`fix(frontend)`, `perf(kb)`, `fix(api)`, `docs(stabilization)`), `black`/`ruff`/`mypy` 0, `pytest -q --ignore=test_knowledge_base` green, `benchmarks/suite.py` 9/9.
+
+---
+
+## 43. Git Workflow
 
 The project uses feature branches:
 
@@ -906,7 +948,7 @@ All tests must pass before every commit.
 
 ---
 
-## Authors
+## 44. Authors
 
 **TextShield** — Academic project.
 
@@ -915,3 +957,7 @@ All tests must pass before every commit.
 - Supervisor: NA
 
 Built with Python, scikit-learn, FastAPI, ChromaDB and open-source LLM tooling.
+
+---
+
+> **Workflow (v2.2.1):** `v2.2-dev` (stabilization) → `main` — conventional commits, `black`/`ruff`/`mypy` 0, `pytest --ignore=test_knowledge_base` 182 passed, `benchmarks` 9/9, KB 29ms, `common.js` before page scripts, `novalidate` forms, defensive JS, lifespan warmup once. See `docs/stabilization/` for 8 reports and `docs/Configuration.md` for env vars.

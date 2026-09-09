@@ -1,6 +1,6 @@
 [project]
 name = "textshield"
-version = "2.2.0"
+version = "2.2.1"
 description = "AI-powered multichannel spam & ham detection with RAG and threat intelligence"
 readme = "README.md"
 requires-python = ">=3.11"

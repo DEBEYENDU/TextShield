@@ -1,0 +1,41 @@
+{
+  "taxonomy_version": "3.0.0",
+  "description": "Formal taxonomy for TextShield enterprise knowledge repository. Every document must belong to exactly one taxonomy node (category + subcategory).",
+  "categories": {
+    "Phishing": ["Credential Theft", "Clone Phishing", "Spear Phishing", "Whaling"],
+    "Credential Theft": ["Banking Login", "Email Login", "Social Media", "Government Portal"],
+    "Banking Fraud": ["Fake KYC", "UPI Fraud", "Fake Electricity Bill", "Aadhaar Update"],
+    "BEC": ["Invoice Fraud", "CEO Fraud", "Payroll Diversion"],
+    "QR Scam": ["Payment QR", "Fake QR", "QR Phishing"],
+    "OTP Theft": ["OTP Forwarding", "SIM Swap", "OTP Phishing"],
+    "Lottery Scam": ["Prize Claim", "International Lottery", "Lucky Draw"],
+    "Investment Scam": ["Crypto Scam", "Stock Tip", "Ponzi", "Pump and Dump"],
+    "Romance Scam": ["Military Romance", "Crypto Romance", "Catfishing"],
+    "Delivery Scam": ["Courier Scam", "Customs Fee", "Failed Delivery"],
+    "Government Scam": ["Income Tax", "Aadhaar", "Utility Bill", "Police Impersonation"],
+    "Crypto Scam": ["Fake Exchange", "Rug Pull", "Airdrop"],
+    "Malware": ["Trojan", "Ransomware", "Spyware", "Keylogger"],
+    "Social Engineering": ["Authority Bias", "Urgency", "Scarcity", "Social Proof", "Reciprocity"],
+    "Psychological Manipulation": ["Fear", "Greed", "Curiosity", "Trust Building", "Personalization"],
+    "Threat Intelligence": ["IOC Collection", "TTP", "Threat Report"],
+    "Advisory": ["CERT-In", "CISA", "RBI", "NPCI", "Microsoft", "Google", "OWASP", "NIST"],
+    "Fraud": ["UPI Fraud", "Card Fraud", "Loan Fraud"],
+    "Telecom": ["Smishing", "Vishing", "SIM Swap"],
+    "URL Analysis": ["Typosquatting", "URL Shortener", "IDN Homograph"],
+    "Malware Report": ["Emotet", "Phishing Kit"],
+    "Government Advisory": ["CERT-In Advisory", "RBI Circular"]
+  },
+  "mappings": {
+    "phishing": "Phishing",
+    "credential_theft": "Credential Theft",
+    "banking": "Banking Fraud",
+    "banking_scams": "Banking Fraud",
+    "investment_scams": "Investment Scam",
+    "romance_scam": "Romance Scam",
+    "delivery_scam": "Delivery Scam",
+    "government": "Government Scam",
+    "gov_scam": "Government Scam",
+    "social_engineering": "Social Engineering",
+    "psychology": "Psychological Manipulation"
+  }
+}
