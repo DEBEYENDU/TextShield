@@ -26,7 +26,8 @@ _INTENT_PHRASES: dict[str, list[tuple[str, float]]] = {
     "Authenticate": [
         ("one time password", 1.7), ("otp", 1.2), ("verification code", 1.5),
         ("login attempt", 1.3), ("use this code to", 1.4), ("2fa", 1.3),
-        ("two-factor", 1.3),
+        ("two-factor", 1.3), ("valid for \\d+ min", 1.5),
+        ("do not share", 1.0),
     ],
     "Verify Identity": [
         ("verify your identity", 1.7), ("confirm your identity", 1.6),

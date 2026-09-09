@@ -64,6 +64,9 @@ class AnalysisResult(BaseModel):
     risk_factors: list[str] = Field(default_factory=list)
     model_used: str
     rag_status: dict = Field(default_factory=dict)
+    # v4 understanding (RFC-001): optional, backward compatible additions.
+    understanding: dict = Field(default_factory=dict)
+    message_profile: dict = Field(default_factory=dict)
     disclaimer: str = (
         "This analysis is informational and reflects static pattern analysis. "
         "It is not legal, financial or security assurance."

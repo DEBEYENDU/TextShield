@@ -155,6 +155,26 @@ def analyze(request: AnalyzeRequest, store_history: bool = True) -> dict:
     intent = intent_engine.detect_intent(full_text)
     logger.info("Intent detection: %s", intent.get("label") if isinstance(intent, dict) else intent)
 
+    # ------------------------------------------------- v4 understanding (RFC-001)
+    # Semantic message understanding runs BEFORE the verdict layers and is
+    # purely additive: it never changes classification, risk or indicators.
+    understanding: dict = {}
+    try:
+        from app.understanding.pipeline import understanding_pipeline
+
+        understanding = understanding_pipeline.analyze(
+            combined_text, sender=sender, subject=subject_text)
+        profile = understanding.get("profile", {})
+        logger.info(
+            "Understanding: type=%s intent=%s risk=%s threat=%.3f trust=%.3f latency_ms=%s",
+            profile.get("category"), profile.get("intent"), profile.get("risk"),
+            profile.get("threat_score"), profile.get("trust_score"),
+            understanding.get("latency_ms"),
+        )
+    except Exception as exc:  # understanding must never break analysis
+        logger.warning("Understanding pipeline failed: %s", exc)
+        understanding = {}
+
     # RAG retrieval (synchronous, cached vector store, never rebuild on page load)
     if retriever.is_ready:
         rag_evidence = retriever.retrieve(combined_text)
@@ -215,6 +235,9 @@ def analyze(request: AnalyzeRequest, store_history: bool = True) -> dict:
         "risk_factors": risk["factors"],
         "model_used": classifier.algorithm_name or "unknown",
         "rag_status": retriever.status(),
+        # v4 understanding (additive; filtered by response_model on v1 API)
+        "understanding": understanding,
+        "message_profile": understanding.get("profile", {}),
     }
 
     # ------------------------------------------------------------- history (Database Save)
