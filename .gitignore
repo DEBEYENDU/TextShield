@@ -16,6 +16,7 @@ models/*.joblib
 models/*.pkl
 vector_db/*
 !vector_db/.gitkeep
+data/knowledge_graph.json
 textshield.db
 logs/*.log
 
