@@ -52,6 +52,13 @@ _EXTRA_PATTERNS: list[dict] = [
 
 _SEVERITY_WEIGHT = {"high": 1.0, "medium": 0.55, "low": 0.25}
 
+_FALSE_POSITIVE_GUARDS = [
+    # (family to guard, benign-context pattern, evidence allowlist that is benign)
+    ("promotion", re.compile(r"toll[\s-]?free", re.IGNORECASE), {"free"}),
+]
+
+_CITATION_GUARD = re.compile(r"\b(as per|per|vide|under|circular|order no\.?)\b", re.IGNORECASE)
+
 _IP_HOST = re.compile(r"https?://\d{1,3}(?:\.\d{1,3}){3}")
 _PUNYCODE = re.compile(r"xn--", re.IGNORECASE)
 _LOOKALike = re.compile(r"(.)\1{2,}|[il1]{3,}|[o0]{3,}")
@@ -102,10 +109,15 @@ class ThreatEngine:
                               lowered, re.IGNORECASE)
             found.append({"indicator": "urgency", "family": "urgency", "severity": "medium",
                           "weight": 0.8, "evidence": match.group(0) if match else "urgency"})
-        # 3. extra RFC families
+        # 3. extra RFC families (with citation guard for authority_abuse:
+        # "as per government order 482/2026" is a circular reference, not abuse)
         for rule in _EXTRA_PATTERNS:
             match = rule["regex"].search(lowered)
             if match:
+                if rule["name"] == "authority_abuse":
+                    prefix = lowered[max(0, match.start() - 20):match.start()]
+                    if _CITATION_GUARD.search(prefix) or _CITATION_GUARD.search(match.group(0)[:20]):
+                        continue
                 snippet = " ".join(match.group(0).split())[:60]
                 found.append({"indicator": rule["name"], "family": rule["name"],
                               "severity": rule["severity"], "weight": rule["weight"],
@@ -116,7 +128,8 @@ class ThreatEngine:
         except Exception:
             urls = []
         found.extend(_typosquat_signals(urls))
-        # dedupe by (family, evidence)
+        # dedupe by (family, evidence), then apply FP guards (e.g. "toll free"
+        # must not count as promotional language)
         seen: set[tuple[str, str]] = set()
         unique: list[dict] = []
         for item in found:
@@ -124,6 +137,17 @@ class ThreatEngine:
             if key not in seen:
                 seen.add(key)
                 unique.append(item)
+        guarded: list[dict] = []
+        for item in unique:
+            drop = False
+            for family, benign, benign_evidence in _FALSE_POSITIVE_GUARDS:
+                if (item["family"] == family and benign.search(lowered)
+                        and item.get("evidence", "").strip().lower() in benign_evidence):
+                    drop = True
+                    break
+            if not drop:
+                guarded.append(item)
+        unique = guarded
         weight_sum = sum(i["weight"] for i in unique)
         threat = round(weight_sum / (weight_sum + 2.5), 3)
         families = sorted({i["family"] for i in unique})

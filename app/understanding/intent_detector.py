@@ -33,6 +33,7 @@ _INTENT_PHRASES: dict[str, list[tuple[str, float]]] = {
         ("verify your identity", 1.7), ("confirm your identity", 1.6),
         ("kyc verification", 1.4), ("upload.*id proof", 1.4),
         ("identity proof", 1.3), ("complete.*verification", 1.2),
+        ("update.*kyc", 1.5), ("kyc.*pending", 1.3), ("kyc", 1.0),
     ],
     "Collect Information": [
         ("share your.*details", 1.5), ("provide.*information", 1.3),
@@ -42,7 +43,8 @@ _INTENT_PHRASES: dict[str, list[tuple[str, float]]] = {
     "Request Action": [
         ("please.*reply", 1.2), ("click.*link", 1.3), ("download.*app", 1.3),
         ("pay.*fee", 1.4), ("transfer.*amount", 1.4), ("act now", 1.2),
-        ("confirm.*account", 1.3),
+        ("confirm.*account", 1.3), ("install.*(teamviewer|anydesk|apk|app)", 1.5),
+        ("call.*technician", 1.2), ("grant.*access", 1.4),
     ],
     "Warn": [
         ("beware of", 1.5), ("fraud alert", 1.5), ("stay safe", 1.2),

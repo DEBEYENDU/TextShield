@@ -17,7 +17,8 @@ _JOB_TITLE_RE = re.compile(
     r"\b(?:software engineer|data analyst|hr manager|accountant|sales executive|"
     r"customer support|delivery boy|driver|teacher|nurse|doctor|manager|analyst|"
     r"developer|designer|consultant|officer|clerk|assistant|supervisor|technician|"
-    r"intern|trainee|executive|associate|specialist|coordinator)\b",
+    r"intern|trainee|executive|associate|specialist|coordinator|hr manager|"
+    r"hr executive|hiring manager|recruiter)\b",
     re.IGNORECASE,
 )
 _UNIVERSITY_RE = re.compile(

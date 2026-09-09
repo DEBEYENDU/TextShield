@@ -34,6 +34,8 @@ _TYPE_PHRASES: dict[str, list[tuple[str, float]]] = {
         ("transaction alert", 1.5), ("neft", 1.2), ("imps", 1.2), ("upi ref", 1.3),
         ("passbook", 1.0), ("branch", 0.7), ("ifsc", 1.2), ("statement", 0.8),
         ("emi due", 1.1), ("cheque", 0.9), ("net banking", 1.0),
+        ("salary.*credited", 1.6), ("credited to your account", 1.6),
+        ("payslip", 1.4), ("salary slip", 1.4),
     ],
     "Government Advisory": [
         ("ministry of", 1.6), ("government of", 1.5), ("municipal corporation", 1.5),
