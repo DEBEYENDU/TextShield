@@ -11,6 +11,15 @@ _QUESTION = re.compile(r"\?")
 _IMPERATIVE = re.compile(
     r"(?im)^(?:please |kindly |do not |don't |never |click |tap |send |share |pay |"
     r"transfer |verify |confirm |call |download |install |open |enter |submit |reply |visit )")
+_SENT_IMPERATIVE = re.compile(
+    r"(?i)^(please|kindly|do not|don't|never|always|click|tap|send|share|pay|"
+    r"transfer|verify|confirm|call|download|install|open|enter|submit|reply|"
+    r"visit|act)\b")
+# polite softeners only count as pressure when paired with a demand marker
+_SOFTENER = re.compile(r"(?i)^(please|kindly)\b")
+_DEMAND_MARKER = re.compile(
+    r"(?i)\b(otp|password|pin|cvv|pay|send|share|transfer|click|verify|confirm|"
+    r"now|immediately|urgent|account|money|fee)\b")
 _CTA = re.compile(
     r"(?i)(click (here|below|the link)|tap (here|below)|call now|reply (now|today)|"
     r"visit .* (link|website)|scan.*qr|download.*(app|file)|register (now|here))")
@@ -28,7 +37,17 @@ class ConversationAnalyzer:
         has_greeting = bool(lines and _GREETING.search(lines[0]))
         has_closing = bool(lines and _CLOSING.search(" ".join(lines[-2:])))
         questions = len(_QUESTION.findall(raw))
-        imperatives = len(_IMPERATIVE.findall(raw))
+        line_imperatives = len(_IMPERATIVE.findall(raw))
+        sent_imperatives = 0
+        for s in sentences:
+            if not _SENT_IMPERATIVE.search(s):
+                continue
+            if _SOFTENER.search(s) and not _DEMAND_MARKER.search(s):
+                continue  # "Please arrive early" is courtesy, not pressure
+            sent_imperatives += 1
+        # single-line blast texts ("Pay now! Send OTP!") only match at
+        # sentence starts; multi-line texts match at line starts — take max
+        imperatives = max(line_imperatives, sent_imperatives)
         imperative_ratio = round(imperatives / n_sent, 3)
         ctas = sorted({_m.group(0)[:45] for _m in _CTA.finditer(raw)})
         # pressure flow: request appears after greeting without context building

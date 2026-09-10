@@ -67,7 +67,9 @@ class LinguisticAnalyzer:
         # formatting consistency: line-length variance + greeting/closing presence
         lines = [line for line in raw.splitlines() if line.strip()]
         greeting = bool(lines and re.match(r"(?i)^(dear|hello|hi|respected|greetings)", lines[0]))
-        closing = bool(lines and re.search(r"(?i)(regards|sincerely|thank you|best|warm regards)", lines[-1]))
+        closing_block = " ".join(lines[-2:]) if lines else ""
+        closing = bool(closing_block and re.search(
+            r"(?i)(regards|sincerely|thank you|best|warm regards|yours)", closing_block))
         formatting = ("Consistent" if greeting and closing else
                       "Partial" if greeting or closing else "Inconsistent")
         abuse = []

@@ -13,7 +13,7 @@ import re
 _TIME_LIMIT = re.compile(
     r"\b(within \d+ (minutes?|hours?|days?)|in the next \d+ (minutes?|hours?)|"
     r"by (today|tonight|midnight|eod)|before \d+ (am|pm)|valid (for|till|until)|"
-    r"expires? (today|tonight|soon|in)|today only|last date)\b", re.IGNORECASE)
+    r"expires? (today|tonight|soon|in)|ends? (tonight|today)|today only|last date)\b", re.IGNORECASE)
 _CONSEQUENCE = re.compile(
     r"\b(will be (blocked|suspended|closed|frozen|deactivated|cancelled|deleted)|"
     r"(account|card|service|number|kyc).{0,15}?(blocked|suspended|closed|deactivated)|"

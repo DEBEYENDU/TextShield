@@ -28,6 +28,8 @@ _TECHNIQUE_PHRASES: dict[str, list[tuple[str, float]]] = {
         ("legal action", 1.4), ("arrest warrant", 1.5), ("fraud detected", 1.3),
         ("unauthorized access", 1.2), ("your money is at risk", 1.4),
         ("account compromised", 1.4), ("penalty will be imposed", 1.3),
+        ("virus detected", 1.3), ("device.*infected", 1.3),
+        ("security alert", 1.2), ("data.*(breach|leak)", 1.2),
     ],
     "Scarcity": [
         ("only \\d+ (left|slots|seats|remaining)", 1.6), ("limited stock", 1.4),

@@ -37,6 +37,7 @@ _PERSUASION_PHRASES: dict[str, list[tuple[str, float]]] = {
     ],
     "Financial Pressure": [
         ("pay.*(fee|now|today|immediately)", 1.4), ("transfer.*amount", 1.3),
+        ("transfer.*(today|new account)", 1.3),
         ("advance.*payment", 1.3), ("processing.*charges", 1.2),
         ("refundable.*deposit", 1.2),
     ],

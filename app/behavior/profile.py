@@ -94,7 +94,15 @@ class StyleClassifier:
                     "Personal Communication": "Conversational",
                     "OTP / Authentication": "Transactional",
                     "Payment Confirmation": "Transactional",
-                    "Healthcare": "Formal", "Courier / Logistics": "Transactional"}
+                    "Healthcare": "Formal", "Courier / Logistics": "Transactional",
+                    "Telecom": "Transactional", "Travel": "Transactional",
+                    "Invoice": "Transactional", "Meeting Invitation": "Corporate",
+                    "Technical Support": "Professional",
+                    "Subscription": "Transactional",
+                    "E-commerce": "Transactional",
+                    "Investment": "Transactional",
+                    "Newsletter": "Neutral",
+                    "Social Media": "Conversational"}
         if msg_type in type_map:
             add(type_map[msg_type], 1.5, f"{msg_type.lower()} type")
         if not scores:
