@@ -21,6 +21,7 @@ from fastapi.templating import Jinja2Templates
 from app import __version__
 from app.api import (
     routes_analysis,
+    routes_decision,
     routes_evaluation,
     routes_history,
     routes_knowledge,
@@ -91,6 +92,7 @@ def _register_page_routes(app: FastAPI, templates: Jinja2Templates) -> None:
 def _register_api_routes(app: FastAPI) -> None:
     for router_module in (
         routes_analysis,
+        routes_decision,
         routes_evaluation,
         routes_history,
         routes_stats,

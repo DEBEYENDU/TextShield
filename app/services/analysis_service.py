@@ -359,6 +359,41 @@ def analyze(request: AnalyzeRequest, store_history: bool = True) -> dict:
         "behavior_profile": behavior.get("behavior_profile", {}),
     }
 
+    # ------------------------------------------- v4 adaptive decision (RFC-007)
+    # Policy-gated verdict over all evidence. Additive only: classification,
+    # risk and every existing key above are untouched.
+    try:
+        import os as _os
+
+        from app.decision.adaptive_engine import adaptive_engine
+        from app.decision.explanation import build_explanation
+        from app.decision.policy import get_policy
+        from app.decision.routing import route_for_review
+
+        _policy = get_policy(_os.getenv("DECISION_POLICY", "balanced"))
+        _decision = adaptive_engine.decide(result, _policy)
+        _decision["explanation"] = build_explanation(_decision, result)
+        _routing = route_for_review(_decision, result, _policy)
+        _decision["review"] = _routing
+        if _routing["needs_review"]:
+            try:
+                from app.decision.review import review_queue
+
+                review_queue.submit(combined_text, _routing["reasons"],
+                                    _routing["priority"])
+            except Exception as exc:
+                logger.warning("Review submission failed: %s", exc)
+        result["adaptive_decision"] = _decision
+        logger.info(
+            "Adaptive decision: %s p=%.3f conf=%.2f risk=%s policy=%s review=%s",
+            _decision["decision"], _decision["p_spam"],
+            _decision["confidence"], _decision["risk"],
+            _policy.name, _routing["needs_review"],
+        )
+    except Exception as exc:  # adaptive layer must never break analysis
+        logger.warning("Adaptive decision failed: %s", exc)
+        result["adaptive_decision"] = {}
+
     # ------------------------------------------------------------- history (Database Save)
     if store_history:
         try:
