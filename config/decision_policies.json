@@ -1,0 +1,66 @@
+{
+  "_comment": "TextShield adaptive decision policies (RFC-007). No hardcoded thresholds in code; edit here or supply a custom file.",
+  "policies": {
+    "conservative": {
+      "description": "Catch everything suspicious; accept more false positives.",
+      "spam_threshold": 0.35,
+      "high_risk_threshold": 0.55,
+      "review_threshold": 0.45,
+      "review_sensitivity": 1.5,
+      "base_weights": {"ml": 1.0, "threat_intel": 1.2, "behavior": 1.2, "agents": 1.0, "graph": 0.9, "rag": 0.9, "legitimacy": 0.8, "llm": 0.8, "intent": 0.8, "message_type": 0.7, "entities": 0.7, "history": 0.6},
+      "min_review_confidence": 0.75
+    },
+    "balanced": {
+      "description": "Default trade-off between precision and recall.",
+      "spam_threshold": 0.5,
+      "high_risk_threshold": 0.65,
+      "review_threshold": 0.35,
+      "review_sensitivity": 1.0,
+      "base_weights": {"ml": 1.0, "threat_intel": 1.0, "behavior": 1.0, "agents": 1.0, "graph": 1.0, "rag": 1.0, "legitimacy": 1.0, "llm": 0.8, "intent": 0.8, "message_type": 0.7, "entities": 0.7, "history": 0.6},
+      "min_review_confidence": 0.65
+    },
+    "aggressive": {
+      "description": "Minimize false positives; only flag clear threats.",
+      "spam_threshold": 0.65,
+      "high_risk_threshold": 0.75,
+      "review_threshold": 0.3,
+      "review_sensitivity": 0.8,
+      "base_weights": {"ml": 1.0, "threat_intel": 0.9, "behavior": 0.9, "agents": 1.0, "graph": 1.0, "rag": 1.0, "legitimacy": 1.3, "llm": 0.8, "intent": 0.8, "message_type": 0.8, "entities": 0.7, "history": 0.6},
+      "min_review_confidence": 0.55
+    },
+    "enterprise": {
+      "description": "Balanced verdicts with mandatory review on conflict or medium+ risk.",
+      "spam_threshold": 0.5,
+      "high_risk_threshold": 0.65,
+      "review_threshold": 0.3,
+      "review_sensitivity": 1.3,
+      "force_review_on_conflict": true,
+      "force_review_min_risk": "Medium",
+      "base_weights": {"ml": 1.0, "threat_intel": 1.1, "behavior": 1.0, "agents": 1.2, "graph": 1.1, "rag": 1.0, "legitimacy": 1.0, "llm": 0.8, "intent": 0.8, "message_type": 0.7, "entities": 0.7, "history": 0.8},
+      "min_review_confidence": 0.7
+    },
+    "research": {
+      "description": "Log everything; route generously for analyst labeling.",
+      "spam_threshold": 0.5,
+      "high_risk_threshold": 0.65,
+      "review_threshold": 0.2,
+      "review_sensitivity": 2.0,
+      "base_weights": {"ml": 1.0, "threat_intel": 1.0, "behavior": 1.0, "agents": 1.0, "graph": 1.0, "rag": 1.0, "legitimacy": 1.0, "llm": 1.0, "intent": 1.0, "message_type": 1.0, "entities": 1.0, "history": 1.0},
+      "min_review_confidence": 0.9
+    }
+  },
+  "category_profiles": {
+    "_comment": "Per-category weight multipliers. Floor 0.4 keeps every source audible; cap 1.8 prevents dominance.",
+    "Recruitment": {"agents": 1.5, "legitimacy": 1.5, "behavior": 1.2, "graph": 1.3, "threat_intel": 0.7, "ml": 0.8},
+    "Educational Announcement": {"agents": 1.4, "legitimacy": 1.5, "graph": 1.2, "threat_intel": 0.7, "behavior": 0.9},
+    "Bank Notification": {"agents": 1.3, "threat_intel": 1.4, "ml": 1.2, "entities": 1.3, "legitimacy": 1.1},
+    "OTP / Authentication": {"agents": 1.2, "threat_intel": 1.3, "behavior": 1.2, "legitimacy": 1.2},
+    "Government Advisory": {"agents": 1.4, "graph": 1.5, "legitimacy": 1.4, "entities": 1.2, "threat_intel": 0.8},
+    "Healthcare": {"legitimacy": 1.4, "agents": 1.3, "graph": 1.2, "threat_intel": 0.8},
+    "Courier / Logistics": {"entities": 1.3, "threat_intel": 1.2, "graph": 1.1, "legitimacy": 1.1},
+    "Payment Confirmation": {"legitimacy": 1.3, "entities": 1.2, "threat_intel": 1.1},
+    "Invoice": {"entities": 1.3, "legitimacy": 1.2, "threat_intel": 1.1},
+    "Unknown": {"ml": 1.2, "threat_intel": 1.2, "behavior": 1.2, "agents": 1.1}
+  },
+  "fusion": {"max_single_source_share": 0.35, "weight_floor": 0.4, "weight_cap": 1.8, "prior_spam": 0.5}
+}
