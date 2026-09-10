@@ -42,9 +42,11 @@ class RecruitmentAgent(BaseAgent):
         if recruiters or jobs:
             relevance = max(relevance, 0.8)
             findings.append(f"hiring entities: {', '.join((recruiters + jobs)[:3])}")
-        scam_markers = [w for w in ("fee", "registration charge", "pay to apply",
+        scam_markers = [w for w in ("registration charge", "pay to apply",
                                     "advance", "share otp", "send otp")
                         if w in text]
+        if "fee" in text and "no fee" not in text:
+            scam_markers.append("fee demand")
         if scam_markers and relevance >= 0.5:
             risk = 0.85
             trust = 0.1
