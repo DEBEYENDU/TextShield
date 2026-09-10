@@ -16,6 +16,7 @@ _TIME_LIMIT = re.compile(
     r"expires? (today|tonight|soon|in)|today only|last date)\b", re.IGNORECASE)
 _CONSEQUENCE = re.compile(
     r"\b(will be (blocked|suspended|closed|frozen|deactivated|cancelled|deleted)|"
+    r"(account|card|service|number|kyc).{0,15}?(blocked|suspended|closed|deactivated)|"
     r"account closure|suspension|termination|legal action|penalty|"
     r"otherwise.*(blocked|charged|lost)|fail(ing|ure) to .* (result|lead))\b",
     re.IGNORECASE)
@@ -24,7 +25,8 @@ _FINAL_WARNING = re.compile(
     r"no further (reminders?|extensions?|notices?)|immediate (action|attention))\b",
     re.IGNORECASE)
 _EMERGENCY = re.compile(
-    r"\b(emergency|critical|alert|asap|act now|hurry|at once|straight away)\b",
+    r"\b(urgent|urgently|immediately|emergency|critical|alert|asap|act now|hurry|"
+    r"at once|straight away)\b",
     re.IGNORECASE)
 
 
@@ -35,19 +37,27 @@ class UrgencyDetector:
         lowered = text or ""
         evidence: list[str] = []
         score = 0.0
+        fired: set[str] = set()
 
-        def collect(pattern: re.Pattern, weight: float, label: str):
+        def collect(pattern: re.Pattern, weight: float, label: str, key: str):
             nonlocal score
             found = pattern.findall(lowered)
             if found:
                 flat = found[0] if isinstance(found[0], str) else found[0][0]
                 evidence.append(f"{label}: {' '.join(str(flat).split())[:45]}")
                 score += weight * (1.0 + 0.25 * (len(found) - 1))
+                fired.add(key)
 
-        collect(_TIME_LIMIT, 1.2, "time limit")
-        collect(_CONSEQUENCE, 1.4, "consequence")
-        collect(_FINAL_WARNING, 1.3, "final warning")
-        collect(_EMERGENCY, 0.8, "emergency language")
+        collect(_TIME_LIMIT, 1.2, "time limit", "time")
+        collect(_CONSEQUENCE, 1.4, "consequence", "consequence")
+        collect(_FINAL_WARNING, 1.3, "final warning", "final")
+        collect(_EMERGENCY, 0.8, "emergency language", "emergency")
+        # informational validity windows ("Valid for 10 mins" on OTPs) are
+        # not pressure tactics: discount when nothing else fired
+        if fired == {"time"} and re.search(r"\bvalid (for|till|until)\b",
+                                           lowered, re.IGNORECASE):
+            score *= 0.4
+            evidence.append("informational validity window (discounted)")
         # structural: exclamation / caps pressure lines
         exclamations = lowered.count("!")
         if exclamations >= 3:
