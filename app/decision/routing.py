@@ -37,7 +37,10 @@ def route_for_review(decision: dict, analysis: dict, policy) -> dict:
     if _novel_pattern(decision, analysis):
         reasons.append("novel phishing technique or scam pattern")
     p_spam = float(decision.get("p_spam", 0.5))
-    if abs(p_spam - 0.5) < review_threshold / max(sensitivity, 0.1):
+    # boundary band widens with review sensitivity (conservative reviews
+    # more borderline cases than aggressive)
+    _band = review_threshold * 0.5 * sensitivity
+    if abs(p_spam - 0.5) < _band:
         reasons.append("verdict near decision boundary")
 
     needs_review = bool(reasons)
