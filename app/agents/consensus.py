@@ -65,6 +65,17 @@ class ConsensusEngine:
         if conflicts and band == "Low" and "contested" not in consensus \
                 and ml_label == "SPAM":
             consensus = "Likely Legitimate (contested)"
+        # strong-alarm floor: a high-relevance domain expert alarm (risk>=0.7)
+        # is never averaged away into Low
+        strong_alarms = [r["name"] for r in agent_reports
+                         if r.get("risk_score", 0.0) >= 0.7
+                         and r.get("relevance", 0.0) >= 0.4]
+        if strong_alarms and band == "Low":
+            band = "Medium"
+            consensus = "Possibly Malicious"
+            conflicts.append(
+                f"Strong domain alarm from {', '.join(strong_alarms)} "
+                f"overrides calm average.")
 
         return {
             "consensus": consensus,

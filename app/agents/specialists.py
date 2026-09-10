@@ -86,11 +86,18 @@ class BankingAgent(BaseAgent):
         if banks:
             relevance = max(relevance, 0.85)
             findings.append(f"bank entities: {', '.join(banks[:3])}")
-        if any(k in text for k in ("upi", "otp", "kyc", "neft", "imps", "balance")):
-            relevance = max(relevance, 0.7)
-        danger = [w for w in ("share otp", "send otp", "verify at http",
+        if any(k in text for k in ("upi", "otp", "kyc", "neft", "imps", "balance",
+                                   "bank details", "new account", "transfer",
+                                   "invoice", "refund")):
+            relevance = max(relevance, 0.6)
+        danger = [w for w in ("share the otp", "share your otp", "share this otp",
+                              "send otp", "otp shown", "enter otp",
+                              "verify at http",
                               "bit.ly", "tinyurl", "account blocked",
-                              "suspended", "kyc pending")
+                              "suspended", "kyc pending", "bank details changed",
+                              "details have changed", "new account",
+                              "grant remote access", "remote access",
+                              "anydesk", "teamviewer")
                   if w in text]
         if danger and relevance >= 0.5:
             risk, trust = 0.88, 0.08
@@ -163,7 +170,8 @@ class PhishingAgent(BaseAgent):
         fams = ctx.threat_families()
         phish_fams = {"credential_harvesting", "suspicious_url", "impersonation",
                       "typosquatting", "homograph", "sensitive_info_request",
-                      "credential_request"}
+                      "credential_request", "remote_access_request",
+                      "malware_delivery", "attachment_abuse", "macro_documents"}
         hits = sorted(fams & phish_fams)
         urls = ctx.entity_values("urls")
         relevance = 0.25 + 0.25 * bool(urls) + 0.15 * min(len(hits), 3)
@@ -199,7 +207,8 @@ class FraudAgent(BaseAgent):
         fams = ctx.threat_families()
         fraud_fams = {"lottery", "investment_scam", "crypto_scam", "reward_bait",
                       "scarcity", "prize_claim", "money_transfer", "romance_scam",
-                      "refund_scam", "advance_fee"}
+                      "refund_scam", "advance_fee", "remote_access_request",
+                      "urgency"}
         hits = sorted(fams & fraud_fams)
         money = ctx.entity_values("money")
         relevance = 0.2 + 0.15 * min(len(hits), 3) + 0.2 * bool(money)
@@ -278,6 +287,13 @@ class LegitimacyAgent(BaseAgent):
         if known_orgs:
             findings.append(f"known organizations: {', '.join(known_orgs[:3])}")
         base_trust = float(ctx.profile.get("trust_score", 0.5))
+        # absence-of-harm alone is not legitimacy: cap when no positive
+        # institutional marker (named org, formal structure, workflow) exists
+        positive_markers = [i for i in indicators
+                            if not str(i.get("indicator", "")).startswith("no_")]
+        if not positive_markers and not known_orgs:
+            relevance = min(relevance, 0.35)
+            base_trust = min(base_trust, 0.55)
         trust = round(min(0.95, 0.3 + 0.5 * base_trust + 0.1 * bool(known_orgs)), 3)
         risk = round(max(0.05, 0.5 - 0.5 * base_trust), 3)
         if base_trust >= 0.6:
