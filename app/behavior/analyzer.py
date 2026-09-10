@@ -174,4 +174,24 @@ class BehavioralAnalyzer:
 
 behavioral_analyzer = BehavioralAnalyzer()
 
-__all__ = ["BehavioralAnalyzer", "behavioral_analyzer"]
+__all__ = ["BehavioralAnalyzer", "behavioral_analyzer", "behavior_context_block"]
+
+
+def behavior_context_block(result: dict) -> str:
+    """Render the behavior profile as an LLM prompt section."""
+    profile = result.get("behavior_profile", {})
+    lines = ["BEHAVIORAL ANALYSIS (influence evidence — context, not verdict):"]
+    lines.append(f"Communication Style: {profile.get('communication_style', 'Neutral')} "
+                 f"(confidence {profile.get('confidence', 0.0)})")
+    triggers = profile.get("psychological_triggers", [])
+    lines.append(f"Psychological Triggers: {', '.join(triggers) if triggers else '(none)'}")
+    se = profile.get("social_engineering", [])
+    lines.append(f"Claimed Persona: {', '.join(se) if se else '(none)'}")
+    lines.append(f"Dominant Emotion: {profile.get('dominant_emotion', 'Neutral')}")
+    urgency = profile.get("urgency", {})
+    lines.append(f"Urgency: {urgency.get('level', 'Low')} (score {urgency.get('score', 0.0)})")
+    lines.append(f"Persuasion: {', '.join(profile.get('persuasion', [])) or '(none)'}")
+    lines.append(f"Manipulation: {profile.get('manipulation_level', 'Minimal')} "
+                 f"(score {profile.get('manipulation_score', 0.0)})")
+    lines.append(f"Overall Behavior: {profile.get('overall_behavior', '')}")
+    return "\n".join(lines)

@@ -46,6 +46,41 @@ def _hash_message(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8", errors="replace")).hexdigest()
 
 
+def _merge_behavior_edges(visualization: dict, behavior_edges: list) -> dict:
+    """Append Person—Uses→technique edges to the Cytoscape payload.
+
+    Behavior edges reference display labels, so they materialize their own
+    ATTACK_PATTERN/persona nodes (id namespaced ``BEHAVIOR:``) instead of
+    rewiring message-graph ids.
+    """
+    try:
+        elements = visualization.get("elements", {})
+        nodes = elements.setdefault("nodes", [])
+        edges = elements.setdefault("edges", [])
+        known_ids = {n.get("data", {}).get("id") for n in nodes}
+        for item in behavior_edges or []:
+            for role, fallback_type in (("src", "PERSON"), ("dst", "ATTACK_PATTERN")):
+                label = str(item.get(f"{role}_label", "")).strip()
+                nid = f"BEHAVIOR:{item.get(f'{role}_type', fallback_type)}:{label.lower()}"
+                if label and nid not in known_ids:
+                    known_ids.add(nid)
+                    nodes.append({"data": {"id": nid, "label": label,
+                                           "type": item.get(f"{role}_type", fallback_type),
+                                           "color": "#FF7452" if role == "dst" else "#4C9AFF",
+                                           "sightings": 0, "threat_hits": 0,
+                                           "legit_hits": 0}})
+            src_id = f"BEHAVIOR:{item.get('src_type', 'PERSON')}:{item.get('src_label', '').lower()}"
+            dst_id = f"BEHAVIOR:{item.get('dst_type', 'ATTACK_PATTERN')}:{item.get('dst_label', '').lower()}"
+            eid = f"{src_id}::{item.get('rel', 'Uses')}::{dst_id}"
+            if all((item.get("src_label"), item.get("dst_label"))) and \
+                    not any(e.get("data", {}).get("id") == eid for e in edges):
+                edges.append({"data": {"id": eid, "source": src_id, "target": dst_id,
+                                       "label": item.get("rel", "Uses"), "weight": 0.6}})
+    except Exception:
+        pass
+    return visualization
+
+
 def _combine_email_fields(request: AnalyzeRequest) -> dict:
     """Return {subject, sender, body, combined} for email input."""
     subject = (request.subject or "").strip()
@@ -187,6 +222,29 @@ def analyze(request: AnalyzeRequest, store_history: bool = True) -> dict:
         rag_evidence = []
         logger.info("RAG not ready - continuing without knowledge evidence")
 
+    # ------------------------------------------- v4 behavior (RFC-004)
+    # Behavioral evidence provider: manipulation, personas, urgency, emotion,
+    # persuasion, style. Additive only — never touches classification/risk.
+    behavior: dict = {}
+    try:
+        from app.behavior.analyzer import behavioral_analyzer, behavior_context_block
+
+        behavior = behavioral_analyzer.analyze(
+            combined_text,
+            message_type=understanding.get("profile", {}).get("category", "Unknown"),
+            sender=sender,
+        )
+        bp = behavior.get("behavior_profile", {})
+        logger.info(
+            "Behavior: style=%s manipulation=%s(%.3f) urgency=%s personas=%s latency_ms=%s",
+            bp.get("communication_style"), bp.get("manipulation_level"),
+            bp.get("manipulation_score"), bp.get("urgency", {}).get("level"),
+            bp.get("social_engineering"), behavior.get("latency_ms"),
+        )
+    except Exception as exc:  # behavior must never break analysis
+        logger.warning("Behavioral analysis failed: %s", exc)
+        behavior = {}
+
     # ------------------------------------------- v4 knowledge graph (RFC-003)
     # Context graph reasoning is additive: per-message graph, verdict with
     # trust/threat adjustments (reported, never applied to stored scores),
@@ -200,8 +258,9 @@ def analyze(request: AnalyzeRequest, store_history: bool = True) -> dict:
 
         kg = build_and_reason(combined_text, understanding, sender=sender)
         verdict = kg["verdict"]
-        if retriever.is_ready and kg["expansion_terms"]:
-            expanded = combined_text + " " + " ".join(kg["expansion_terms"])
+        expansion_terms = list(kg["expansion_terms"]) + behavior.get("rag_terms", [])
+        if retriever.is_ready and expansion_terms:
+            expanded = combined_text + " " + " ".join(expansion_terms)
             try:
                 extra = retriever.retrieve(expanded)
                 seen_ids = {e.get("id") for e in rag_evidence}
@@ -221,8 +280,10 @@ def analyze(request: AnalyzeRequest, store_history: bool = True) -> dict:
             "confidence": verdict["confidence"],
             "reasons": verdict["reasons"],
             "expansion_terms": kg["expansion_terms"],
+            "behavior_rag_terms": behavior.get("rag_terms", []),
             "graph_context": llm_context_block(verdict),
-            "visualization": to_cytoscape(kg["message_graph"]),
+            "visualization": _merge_behavior_edges(
+                to_cytoscape(kg["message_graph"]), behavior.get("graph_edges", [])),
             "store_size": kg["graph_size"],
         }
         logger.info(
@@ -266,6 +327,7 @@ def analyze(request: AnalyzeRequest, store_history: bool = True) -> dict:
             "message_type": effective_type,
             "intent": intent,
             "graph_context": knowledge_graph.get("graph_context", ""),
+            "behavior_context": behavior_context_block(behavior) if behavior else "",
         }
     )
 
@@ -292,6 +354,9 @@ def analyze(request: AnalyzeRequest, store_history: bool = True) -> dict:
         # v4 knowledge graph (additive)
         "knowledge_graph": knowledge_graph,
         "graph_rag_evidence": graph_rag_evidence,
+        # v4 behavior (additive)
+        "behavior": behavior,
+        "behavior_profile": behavior.get("behavior_profile", {}),
     }
 
     # ------------------------------------------------------------- history (Database Save)

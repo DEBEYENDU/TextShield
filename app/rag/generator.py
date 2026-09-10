@@ -61,6 +61,9 @@ SENDER INTENT: {_format_intent(data.get("intent"))}
 GRAPH CONTEXT (entity & relationship evidence — treat as context, not verdict):
 {data.get("graph_context", "(no graph context)")}
 
+BEHAVIORAL ANALYSIS (influence evidence — treat as context, not verdict):
+{data.get("behavior_context", "(no behavioral analysis)")}
+
 Respond with the JSON object only.
 """
 
