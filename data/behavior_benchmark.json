@@ -1,0 +1,113 @@
+{
+ "description": "RFC-004 v4.0 behavioral benchmark: legitimate vs malicious messages with expected behavior profile. Measures false positives, false negatives and behavior detection accuracy.",
+ "legitimate": [
+  {
+   "id": "beh_leg_recruitment",
+   "text": "We are hiring software engineers! Walk-in interview on Monday 10 AM at Cyber Towers, Hyderabad. Carry resume and ID proof. HR Department, TechMahindra Solutions.",
+   "expected_style": ["Corporate", "Professional", "Formal"],
+   "expected_manipulation": ["Minimal", "Low"],
+   "expected_urgency": ["Low", "Medium"]
+  },
+  {
+   "id": "beh_leg_university",
+   "text": "Dear Students, the convocation ceremony will be held on 15th March. All graduating students are requested to collect their gowns from the registrar office. Congratulations!",
+   "expected_style": ["Academic", "Formal", "Professional"],
+   "expected_manipulation": ["Minimal", "Low"],
+   "expected_urgency": ["Low"]
+  },
+  {
+   "id": "beh_leg_bank_sms",
+   "text": "Your account XX4821 has been credited with Rs.25,000 on 10-Sep. Available balance Rs.78,400. - HDFC Bank",
+   "expected_style": ["Transactional", "Formal", "Neutral"],
+   "expected_manipulation": ["Minimal", "Low"],
+   "expected_urgency": ["Low"]
+  },
+  {
+   "id": "beh_leg_otp",
+   "text": "Your OTP is 482916. Valid for 10 mins. Do not share with anyone. - HDFC Bank",
+   "expected_style": ["Transactional", "Formal", "Neutral"],
+   "expected_manipulation": ["Minimal", "Low"],
+   "expected_urgency": ["Low", "Medium"]
+  },
+  {
+   "id": "beh_leg_govt",
+   "text": "Public notice: The Municipal Corporation will carry out water supply maintenance on Sunday. Citizens are advised to store water. Toll free helpline 1800-11-2929.",
+   "expected_style": ["Government", "Formal"],
+   "expected_manipulation": ["Minimal", "Low"],
+   "expected_urgency": ["Low", "Medium"]
+  },
+  {
+   "id": "beh_leg_courier",
+   "text": "Your parcel AWB 4829163750 is out for delivery today. Expected delivery by 6 PM. Track on our website.",
+   "expected_style": ["Transactional", "Neutral", "Formal"],
+   "expected_manipulation": ["Minimal", "Low"],
+   "expected_urgency": ["Low", "Medium"]
+  },
+  {
+   "id": "beh_leg_hospital",
+   "text": "Reminder: Your appointment with Dr. Sharma at Apollo Hospital is tomorrow at 10:30 AM. Please arrive 15 minutes early. Call 1860-500-1066 to reschedule.",
+   "expected_style": ["Formal", "Professional", "Transactional"],
+   "expected_manipulation": ["Minimal", "Low"],
+   "expected_urgency": ["Low", "Medium"]
+  },
+  {
+   "id": "beh_leg_hr",
+   "text": "Dear Team, the appraisal cycle starts next week. Please complete self-assessments on the HR portal by Friday. Best regards, HR Team.",
+   "expected_style": ["Corporate", "Professional", "Formal"],
+   "expected_manipulation": ["Minimal", "Low"],
+   "expected_urgency": ["Low", "Medium"]
+  }
+ ],
+ "malicious": [
+  {
+   "id": "beh_mal_phishing",
+   "text": "URGENT: Your SBI account will be BLOCKED within 2 hours! Verify your login at http://bit.ly/sbi-kyc-91 immediately and share your OTP to avoid closure.",
+   "expected_manipulation": ["Medium", "High"],
+   "expected_urgency": ["High", "Critical"],
+   "min_triggers": 2
+  },
+  {
+   "id": "beh_mal_lottery",
+   "text": "CONGRATULATIONS! You have WON Rs.25,00,000 in the international lucky draw! Claim your prize NOW by paying a small processing fee. Offer ends tonight!",
+   "expected_manipulation": ["Medium", "High"],
+   "expected_urgency": ["Medium", "High", "Critical"],
+   "min_triggers": 2
+  },
+  {
+   "id": "beh_mal_investment",
+   "text": "Double your money in 7 days! Guaranteed returns, RBI registered platform, 100% safe. Invest now, offer for first 50 users only!",
+   "expected_manipulation": ["Medium", "High"],
+   "expected_urgency": ["Low", "Medium", "High", "Critical"],
+   "min_triggers": 2
+  },
+  {
+   "id": "beh_mal_techsupport",
+   "text": "MICROSOFT SECURITY ALERT: Virus detected on your device! Install TeamViewer NOW and call our technician immediately! Do NOT switch off!",
+   "expected_manipulation": ["Medium", "High"],
+   "expected_urgency": ["Medium", "High", "Critical"],
+   "min_triggers": 2
+  },
+  {
+   "id": "beh_mal_kyc",
+   "text": "Dear customer, your KYC is pending as per RBI guidelines. Update immediately by sharing your Aadhaar number and OTP, otherwise account will be frozen today.",
+   "expected_manipulation": ["Medium", "High"],
+   "expected_urgency": ["Medium", "High", "Critical"],
+   "min_triggers": 2
+  },
+  {
+   "id": "beh_mal_ceo",
+   "text": "This is the CEO. Confidential acquisition underway, keep this between us. Transfer Rs.5,00,000 to the vendor immediately. I am in a meeting, do not call.",
+   "expected_manipulation": ["Medium", "High"],
+   "expected_urgency": ["Low", "Medium", "High", "Critical"],
+   "min_triggers": 1,
+   "expected_personas": ["CEO Fraud"]
+  },
+  {
+   "id": "beh_mal_bec",
+   "text": "Dear vendor, our bank details have changed for all future invoices. Please transfer the pending Rs.2,40,000 to the new account today. This is authorized by the finance head. Regards, Accounts Team.",
+   "expected_manipulation": ["Low", "Medium", "High"],
+   "expected_urgency": ["Low", "Medium", "High", "Critical"],
+   "min_triggers": 1
+  }
+ ]
+}
