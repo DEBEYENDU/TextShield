@@ -18,6 +18,8 @@ vector_db/*
 !vector_db/.gitkeep
 data/knowledge_graph.json
 data/agent_memory.json
+data/eval/runs/
+data/eval/feedback.json
 textshield.db
 logs/*.log
 
