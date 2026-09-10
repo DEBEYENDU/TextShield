@@ -48,9 +48,12 @@ class DatasetManager:
         self.eval_dir = Path(eval_dir)
 
     # ------------------------------------------------------- loading
+    # Files in the eval dir that are stores, not datasets.
+    NON_COLLECTIONS = {"feedback"}
+
     def collections(self) -> list[str]:
         names = [p.stem for p in sorted(self.eval_dir.glob("*.json"))
-                 if p.stem != "runs"]
+                 if p.stem != "runs" and p.stem not in self.NON_COLLECTIONS]
         return names
 
     def load_collection(self, name: str) -> list[EvalSample]:
