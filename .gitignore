@@ -17,6 +17,7 @@ models/*.pkl
 vector_db/*
 !vector_db/.gitkeep
 data/knowledge_graph.json
+data/agent_memory.json
 textshield.db
 logs/*.log
 
