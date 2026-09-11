@@ -12,7 +12,7 @@ from app.decision.policy import DecisionPolicy, load_policies
 
 SOURCES = ["ml", "rag", "graph", "threat_intel", "behavior", "intent",
            "message_type", "entities", "llm", "agents", "history",
-           "legitimacy"]
+           "legitimacy", "ti_intel"]
 
 
 def adaptive_weights(category: str, policy: DecisionPolicy,

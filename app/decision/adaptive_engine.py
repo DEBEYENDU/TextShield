@@ -151,6 +151,23 @@ def extract_sources(analysis: dict) -> dict:
     if legitimacy or trust != 0.5:
         votes["legitimacy"] = {"p_spam": _clip(1 - trust), "confidence": 0.6,
                                "evidence": [f"trust score {trust:.2f}"]}
+
+    # 13. Threat intel (RFC-008): known malicious is strong threat
+    # evidence, benign is mild trust evidence, unknown abstains (never
+    # auto-trusts and never indicts on its own).
+    ti = analysis.get("threat_intel", {}) or {}
+    worst = ti.get("worst_verdict", "unknown")
+    if worst == "known_malicious":
+        n = sum(1 for c in ti.get("checks", [])
+                if c.get("aggregated_verdict") == "known_malicious")
+        votes["ti_intel"] = {"p_spam": 0.9, "confidence": 0.8,
+                             "evidence": [f"{n} known-malicious IOC(s)"]}
+    elif worst == "suspicious":
+        votes["ti_intel"] = {"p_spam": 0.65, "confidence": 0.55,
+                             "evidence": ["suspicious IOC(s) observed"]}
+    elif worst == "benign" and ti.get("n_iocs", 0) > 0:
+        votes["ti_intel"] = {"p_spam": 0.3, "confidence": 0.5,
+                             "evidence": ["all checked IOCs benign"]}
     return votes
 
 
