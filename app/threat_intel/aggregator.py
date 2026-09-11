@@ -41,7 +41,17 @@ def aggregate(ioc: str, ioc_type: str,
                 "reason": f"flagged malicious by {best.provider}"}
     score = 0.0
     weight = 0.0
-    for result in usable:
+    # Unknown verdicts carry no information: they count toward agreement
+    # stats but must not dilute real signals in either direction.
+    scoring = [r for r in usable if r.verdict != "unknown"]
+    if not scoring:
+        return {"ioc": ioc, "ioc_type": ioc_type,
+                "aggregated_verdict": "unknown", "threat_level": "UNKNOWN",
+                "confidence": 0.0, "agreement": 1.0,
+                "results": [r.to_dict() for r in results],
+                "disagreement": False,
+                "reason": "all providers returned unknown"}
+    for result in scoring:
         reliability = RELIABILITY.get(result.provider, 0.5)
         w = reliability * (0.5 + result.confidence)
         score += _VERDICT_SCORE.get(result.verdict, 0.0) * w
