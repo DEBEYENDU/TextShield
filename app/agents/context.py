@@ -28,6 +28,8 @@ class AgentContext:
     # v4 knowledge graph (RFC-003)
     graph_verdict: dict = field(default_factory=dict)
     graph_expansion_terms: list = field(default_factory=list)
+    # v4 threat intel (RFC-008): worst verdict + per-IOC checks
+    threat_intel: dict = field(default_factory=dict)
     # pipeline evidence
     ml_label: str = ""
     ml_confidence: float = 0.0

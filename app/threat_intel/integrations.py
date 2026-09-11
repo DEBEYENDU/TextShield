@@ -156,8 +156,7 @@ def to_rag_evidence(checks: list[dict]) -> list[dict]:
     return evidence
 
 
-def llm_block(checks: list[dict]) -> str:
-    """Render normalized TI evidence as an LLM prompt section.
+def llm_block(checks: list[dict]) -> str:    """Render normalized TI evidence as an LLM prompt section.
 
     Presents per-IOC verdicts including disagreements explicitly and
     instructs the model to explain (never invent) intel results.
@@ -186,3 +185,28 @@ def llm_block(checks: list[dict]) -> str:
     lines.append(f"Aggregated: worst verdict across IOCs decides urgency, "
                  f"never a lone UNKNOWN.")
     return "\n".join(lines)
+
+
+def agent_brief(threat_intel: dict) -> dict:
+    """Distill TI verdicts into agent-usable signals.
+
+    Agents must distinguish known malicious / suspicious / unknown /
+    benign. Unknown stays neutral — it never raises trust and never
+    raises threat on its own.
+    """
+    brief = {"malicious_iocs": [], "suspicious_iocs": [],
+             "benign_iocs": [], "unknown_iocs": [],
+             "worst_verdict": (threat_intel or {}).get("worst_verdict", "unknown"),
+             "n_iocs": (threat_intel or {}).get("n_iocs", 0)}
+    for check in (threat_intel or {}).get("checks", []):
+        verdict = check.get("aggregated_verdict", "unknown")
+        label = f"{check.get('ioc', '')} ({check.get('ioc_type', '')})"
+        if verdict == "known_malicious":
+            brief["malicious_iocs"].append(label)
+        elif verdict == "suspicious":
+            brief["suspicious_iocs"].append(label)
+        elif verdict == "benign":
+            brief["benign_iocs"].append(label)
+        else:
+            brief["unknown_iocs"].append(label)
+    return brief

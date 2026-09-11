@@ -81,6 +81,7 @@ class BaseAgent(ABC):
                     reasoning = enriched
             except Exception as exc:
                 logger.warning("Agent %s LLM enrichment failed: %s", self.name, exc)
+        partial = self._apply_threat_intel(ctx, partial)
         elapsed_ms = round((time.perf_counter() - started) * 1000.0, 2)
         return {
             "name": self.name,
@@ -96,6 +97,39 @@ class BaseAgent(ABC):
         }
 
     # ------------------------------------------------------- helpers
+    @staticmethod
+    def _apply_threat_intel(ctx: AgentContext, partial: dict) -> dict:
+        """Fold TI verdicts into risk/trust uniformly for every agent.
+
+        known malicious -> risk up; suspicious -> risk slightly up;
+        benign -> trust up; unknown -> strictly neutral (never auto-trust).
+        """
+        try:
+            from app.threat_intel.integrations import agent_brief
+
+            brief = agent_brief(getattr(ctx, "threat_intel", None) or {})
+        except Exception:
+            return partial
+        findings = list(partial.get("findings", []))
+        risk = float(partial.get("risk_score", 0.0))
+        trust = float(partial.get("trust_score", 0.0))
+        if brief.get("malicious_iocs"):
+            risk = min(0.95, risk + 0.25)
+            findings.append("threat-intel: known malicious "
+                            f"{', '.join(brief['malicious_iocs'][:2])}"[:120])
+        if brief.get("suspicious_iocs"):
+            risk = min(0.95, risk + 0.1)
+            findings.append("threat-intel: suspicious "
+                            f"{', '.join(brief['suspicious_iocs'][:2])}"[:120])
+        if brief.get("benign_iocs"):
+            trust = min(0.95, trust + 0.1)
+            findings.append("threat-intel: known benign "
+                            f"{', '.join(brief['benign_iocs'][:2])}"[:120])
+        partial["findings"] = findings
+        partial["risk_score"] = round(risk, 3)
+        partial["trust_score"] = round(trust, 3)
+        return partial
+
     @staticmethod
     def _confidence(partial: dict) -> float:
         findings = partial.get("findings", [])

@@ -55,6 +55,7 @@ class AgentOrchestrator:
             indicators=analysis.get("indicators", []),
             urls=analysis.get("urls", []),
             rag_evidence=analysis.get("rag_evidence", []),
+            threat_intel=analysis.get("threat_intel", {}) or {},
             risk_level=str(analysis.get("risk_level", "")),
             risk_score=float(analysis.get("risk_score", 0.0) or 0.0),
         )
