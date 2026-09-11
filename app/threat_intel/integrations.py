@@ -116,7 +116,8 @@ def _campaign_hint(check: dict) -> str:
     return "malicious-infrastructure"
 
 
-def to_rag_evidence(checks: list[dict]) -> list[dict]:    """Format validated threat findings as retrievable evidence.
+def to_rag_evidence(checks: list[dict]) -> list[dict]:
+    """Format validated threat findings as retrievable evidence.
 
     Only confirmed verdicts (known_malicious / benign from a successful
     lookup) become evidence — raw external responses are never inserted
