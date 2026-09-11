@@ -298,6 +298,31 @@ def analyze(request: AnalyzeRequest, store_history: bool = True) -> dict:
         logger.warning("Knowledge graph failed: %s", exc)
         knowledge_graph = {}
 
+    # ------------------------------------------- v4 threat intel (RFC-008)
+    # IOC extraction -> local reputation/cache -> providers -> aggregate.
+    # Offline-first and additive: never blocks analysis, never visits URLs.
+    threat_intel: dict = {}
+    try:
+        from app.threat_intel import integrations as ti_integrations
+        from app.threat_intel.manager import build_default_manager
+
+        _ti_manager = build_default_manager()
+        _ti_result = _ti_manager.check_message(combined_text)
+        _graph_sync = ti_integrations.sync_to_graph(_ti_result.get("checks", []))
+        threat_intel = {
+            "iocs": _ti_result.get("iocs", []),
+            "checks": _ti_result.get("checks", []),
+            "worst_verdict": _ti_result.get("worst_verdict", "unknown"),
+            "n_iocs": _ti_result.get("n_iocs", 0),
+            "graph_sync": _graph_sync,
+        }
+        logger.info("Threat Intel: %d iocs worst=%s graph_nodes=%d",
+                    threat_intel["n_iocs"], threat_intel["worst_verdict"],
+                    _graph_sync.get("nodes_added", 0))
+    except Exception as exc:  # threat intel must never break analysis
+        logger.warning("Threat intel failed: %s", exc)
+        threat_intel = {}
+
     # Threat Intel (provider-agnostic, not blocking if unavailable)
     # Currently via separate /api/v2/threat endpoints; inline check is no-op but logged
     logger.info("Threat Intel: checked %d urls, %d indicators", len(urls), len(indicators))
@@ -357,6 +382,8 @@ def analyze(request: AnalyzeRequest, store_history: bool = True) -> dict:
         # v4 behavior (additive)
         "behavior": behavior,
         "behavior_profile": behavior.get("behavior_profile", {}),
+        # v4 threat intel (additive, offline-first)
+        "threat_intel": threat_intel,
     }
 
     # ------------------------------------------- v4 adaptive decision (RFC-007)
