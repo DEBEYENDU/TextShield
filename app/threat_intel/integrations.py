@@ -114,3 +114,43 @@ def _campaign_hint(check: dict) -> str:
             if "scam" in text or "fraud" in text:
                 return "fraud-campaign"
     return "malicious-infrastructure"
+
+
+def to_rag_evidence(checks: list[dict]) -> list[dict]:
+    """Format validated threat findings as retrievable evidence.
+
+    Only confirmed verdicts (known_malicious / benign from a successful
+    lookup) become evidence — raw external responses are never inserted
+    blindly. Each item carries source metadata and matches the
+    rag_evidence item shape. Durability comes from the reputation store
+    and graph sync, so future analyses retrieve the same conclusions.
+    """
+    evidence: list[dict] = []
+    for check in checks or []:
+        verdict = check.get("aggregated_verdict", "unknown")
+        if verdict not in {"known_malicious", "benign"}:
+            continue
+        providers = sorted({r.get("provider", "") for r in check.get("results", [])
+                            if r.get("verdict") == verdict})
+        if not providers:
+            continue
+        ioc, ioc_type = check["ioc"], check["ioc_type"]
+        if verdict == "known_malicious":
+            document = (f"Threat intelligence: {ioc} ({ioc_type}) previously "
+                        f"associated with malicious activity "
+                        f"(confidence {check.get('confidence', 0):.2f}).")
+            category, score = "threat_intel", round(0.5 + check.get("confidence", 0) / 2, 4)
+        else:
+            document = (f"Threat intelligence: {ioc} ({ioc_type}) previously "
+                        f"assessed benign.")
+            category, score = "threat_intel_benign", 0.3
+        evidence.append({
+            "id": f"ti:{ioc_type}:{ioc.lower()}",
+            "document": document,
+            "metadata": {"source": "threat-intel",
+                         "category": category,
+                         "providers": providers,
+                         "verdict": verdict},
+            "score": score,
+        })
+    return evidence

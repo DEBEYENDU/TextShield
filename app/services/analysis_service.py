@@ -315,6 +315,8 @@ def analyze(request: AnalyzeRequest, store_history: bool = True) -> dict:
             "worst_verdict": _ti_result.get("worst_verdict", "unknown"),
             "n_iocs": _ti_result.get("n_iocs", 0),
             "graph_sync": _graph_sync,
+            "rag_evidence": ti_integrations.to_rag_evidence(
+                _ti_result.get("checks", [])),
         }
         logger.info("Threat Intel: %d iocs worst=%s graph_nodes=%d",
                     threat_intel["n_iocs"], threat_intel["worst_verdict"],
