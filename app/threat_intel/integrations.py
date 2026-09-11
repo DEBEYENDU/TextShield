@@ -156,7 +156,8 @@ def to_rag_evidence(checks: list[dict]) -> list[dict]:
     return evidence
 
 
-def llm_block(checks: list[dict]) -> str:    """Render normalized TI evidence as an LLM prompt section.
+def llm_block(checks: list[dict]) -> str:
+    """Render normalized TI evidence as an LLM prompt section.
 
     Presents per-IOC verdicts including disagreements explicitly and
     instructs the model to explain (never invent) intel results.
