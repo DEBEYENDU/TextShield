@@ -46,18 +46,18 @@ def extract_sources(analysis: dict) -> dict:
                        "confidence": ml_conf,
                        "evidence": [f"ML verdict {ml_label} ({ml_conf:.0%})"]}
 
-    # 2. RAG retrieval
+    # 2. RAG retrieval (neutral base: retrieved docs alone say little)
     rag = analysis.get("rag_evidence", []) or []
     high_risk = sum(1 for e in rag if str(e.get("category", "")) in {
         "banking_scams", "phishing", "investment_scams"})
     if rag:
-        p = min(0.9, 0.3 + 0.2 * high_risk)
+        p = min(0.9, 0.5 + 0.15 * high_risk)
         votes["rag"] = {"p_spam": p, "confidence": round(min(0.9, 0.4 + 0.15 * len(rag)), 3),
                         "evidence": [f"{len(rag)} retrieved docs, {high_risk} high-risk"]}
 
     # 3. Knowledge graph (adjusted scores from RFC-003 reasoner)
     if graph:
-        p = float(graph.get("adjusted_threat", profile.get("threat_score", 0.5)) or 0.0)
+        p = float(graph.get("adjusted_threat", profile.get("threat_score", 0.5)) or 0.5)
         campaigns = graph.get("campaign_matches", [])
         votes["graph"] = {"p_spam": _clip(p),
                           "confidence": 0.7 if campaigns else 0.5,
@@ -75,14 +75,15 @@ def extract_sources(analysis: dict) -> dict:
             "confidence": round(min(0.9, 0.4 + 0.15 * (len(indicators) + len(urls))), 3),
             "evidence": [f"{len(indicators)} indicators ({high} high), {len(urls)} urls"]}
 
-    # 5. Behavior engine
+    # 5. Behavior engine (votes only with manipulation/personas/urgency)
     manip = float(behavior.get("manipulation_score", 0.0) or 0.0)
     urg = (behavior.get("urgency", {}) or {}).get("level", "Low")
-    if behavior:
-        p = _clip(manip * 0.8 + (0.25 if urg in {"High", "Critical"} else 0.0))
+    personas = behavior.get("social_engineering", []) or []
+    if behavior and (manip >= 0.2 or personas or urg in {"High", "Critical"}):
+        p = _clip(0.5 + (manip - 0.3) + (0.2 if urg in {"High", "Critical"} else 0.0))
         votes["behavior"] = {"p_spam": p, "confidence": 0.65,
                              "evidence": [f"manipulation {behavior.get('manipulation_level', '?')} "
-                                          f"({manip}), urgency {urg}"]}
+                                          f"({manip}), urgency {urg}"] + (personas[:1] or [])}
 
     # 6. Intent engine (malicious request intents)
     intent_label = str((analysis.get("intent", {}) or {}).get("label", "other"))
@@ -94,7 +95,7 @@ def extract_sources(analysis: dict) -> dict:
                            "confidence": 0.7 if malicious else 0.4,
                            "evidence": [f"sender intent: {intent_label}"]}
 
-    # 7. Message type (Unknown + threat is itself a weak signal)
+    # 7. Message type (type context modulates the threat reading)
     category = str(profile.get("category", "Unknown"))
     if category == "Unknown" and threat_score >= 0.3:
         votes["message_type"] = {"p_spam": 0.6, "confidence": 0.4,
@@ -114,12 +115,12 @@ def extract_sources(analysis: dict) -> dict:
                              "confidence": 0.55,
                              "evidence": [f"{n_urls} urls, {n_cred} credential requests"]}
 
-    # 9. LLM reasoning (weak signal: source + agreement with ML)
+    # 9. LLM reasoning (votes only on real LLM output, never template)
     expl_source = str(analysis.get("explanation_source", "template"))
-    if expl_source:
-        votes["llm"] = {"p_spam": _clip(threat_score if expl_source == "llm" else 0.4),
-                        "confidence": 0.6 if expl_source == "llm" else 0.3,
-                        "evidence": [f"explanation source: {expl_source}"]}
+    if expl_source and expl_source != "template":
+        votes["llm"] = {"p_spam": _clip(threat_score if threat_score else 0.5),
+                        "confidence": 0.6,
+                        "evidence": [f"LLM explanation ({expl_source})"]}
 
     # 10. Multi-agent consensus
     consensus = ((analysis.get("agent_report", {}) or {}).get("consensus")
@@ -174,11 +175,57 @@ class AdaptiveEngine:
         weights = adaptive_weights(category, policy, confidences)
         weights = {s: weights.get(s, 0.8) for s in votes}
         shares = capped_shares(weights)
-        p_spam = round(sum(votes[s]["p_spam"] * shares[s] for s in votes), 4)
+        # conviction: strong evidence speaks louder than weak evidence.
+        # A benign source with p=0.3 whispers; a threat source with p=0.9
+        # shouts. This preserves FP reduction (many weak benign votes still
+        # outweigh one weak threat vote) without diluting strong alarms.
+        convictions = {}
+        for s in votes:
+            strength = abs(votes[s]["p_spam"] - 0.5) * 2
+            convictions[s] = round(min(1.0, strength * (0.5 + votes[s]["confidence"])), 3)
+        eff = {s: shares[s] * (0.15 + 0.85 * convictions[s]) for s in votes}
+        eff_total = sum(eff.values()) or 1e-9
+        eff = {s: v / eff_total for s, v in eff.items()}
+        # cap any single effective share (recount dominance) and renormalize
+        eff = capped_shares({s: v for s, v in eff.items()})
+        prior_w, prior_p = 0.25, 0.5
+        p_spam = round((prior_w * prior_p + sum(votes[s]["p_spam"] * eff[s] for s in votes))
+                       / (prior_w + 1.0), 4)
+        fusion_p_spam = p_spam
+        # Corroborated override: the fused verdict stands except when it
+        # contradicts ML without backup. Overriding ML in either direction
+        # requires at least 2 convicted non-ML sources on the fused side;
+        # otherwise the verdict follows ML (recorded, explainable).
+        # This keeps FP reduction (many weak benign votes still overturn a
+        # weak ML-SPAM) while protecting recall (lone heuristics cannot
+        # silence a confident ML-SPAM, nor indict a confident ML-HAM).
+        override = ""
+        ml_vote = votes.get("ml")
+        fused_spam = p_spam >= policy.spam_threshold
+        if ml_vote:
+            ml_spam = ml_vote["p_spam"] >= 0.5
+            if ml_spam != fused_spam:
+                corroborators = [
+                    s for s in votes if s != "ml"
+                    and (votes[s]["p_spam"] >= 0.6 if fused_spam else votes[s]["p_spam"] <= 0.4)
+                    and abs(votes[s]["p_spam"] - 0.5) * 2
+                    * (0.5 + votes[s]["confidence"]) > 0.4]
+                if len(corroborators) < 2:
+                    p_spam = round((ml_vote["p_spam"] + p_spam) / 2, 4)
+                    override = (
+                        f"followed ML ({ml_vote['p_spam']:.2f}) over fusion "
+                        f"({fusion_p_spam:.2f}); only {len(corroborators)} "
+                        f"corroborators: {corroborators[:2]}")
+                else:
+                    override = (
+                        f"overruled ML ({ml_vote['p_spam']:.2f}) with fusion "
+                        f"({fusion_p_spam:.2f}); corroborators: "
+                        f"{corroborators[:3]}")
         contributions = sorted(
             [{"source": s, "p_spam": votes[s]["p_spam"], "weight": weights[s],
-              "share": shares[s],
-              "contribution": round((votes[s]["p_spam"] - 0.5) * shares[s], 4),
+              "share": shares[s], "effective_share": eff[s],
+              "conviction": convictions[s],
+              "contribution": round((votes[s]["p_spam"] - 0.5) * eff[s], 4),
               "evidence": votes[s]["evidence"]} for s in votes],
             key=lambda c: -abs(c["contribution"]))
         p_list = [votes[s]["p_spam"] for s in votes]
@@ -193,6 +240,7 @@ class AdaptiveEngine:
                 else "Low" if p_spam >= 0.2 else "Very Low")
         elapsed_ms = round((time.perf_counter() - started) * 1000.0, 2)
         return {"decision": label, "p_spam": p_spam,
+                "fusion_p_spam": fusion_p_spam, "override": override,
                 "confidence": conf["calibrated_confidence"],
                 "raw_confidence": conf["raw_confidence"],
                 "agreement": conf["agreement"], "coverage": conf["coverage"],
