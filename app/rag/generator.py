@@ -64,6 +64,9 @@ GRAPH CONTEXT (entity & relationship evidence — treat as context, not verdict)
 BEHAVIORAL ANALYSIS (influence evidence — treat as context, not verdict):
 {data.get("behavior_context", "(no behavioral analysis)")}
 
+THREAT INTELLIGENCE (IOC evidence — explain disagreements, never invent results):
+{data.get("threat_intel_context", "(no threat-intel lookups)")}
+
 Respond with the JSON object only.
 """
 

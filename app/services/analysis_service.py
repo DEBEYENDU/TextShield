@@ -355,6 +355,8 @@ def analyze(request: AnalyzeRequest, store_history: bool = True) -> dict:
             "intent": intent,
             "graph_context": knowledge_graph.get("graph_context", ""),
             "behavior_context": behavior_context_block(behavior) if behavior else "",
+            "threat_intel_context": ti_integrations.llm_block(
+                threat_intel.get("checks", [])) if threat_intel else "",
         }
     )
 

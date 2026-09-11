@@ -116,8 +116,7 @@ def _campaign_hint(check: dict) -> str:
     return "malicious-infrastructure"
 
 
-def to_rag_evidence(checks: list[dict]) -> list[dict]:
-    """Format validated threat findings as retrievable evidence.
+def to_rag_evidence(checks: list[dict]) -> list[dict]:    """Format validated threat findings as retrievable evidence.
 
     Only confirmed verdicts (known_malicious / benign from a successful
     lookup) become evidence — raw external responses are never inserted
@@ -154,3 +153,35 @@ def to_rag_evidence(checks: list[dict]) -> list[dict]:
             "score": score,
         })
     return evidence
+
+
+def llm_block(checks: list[dict]) -> str:
+    """Render normalized TI evidence as an LLM prompt section.
+
+    Presents per-IOC verdicts including disagreements explicitly and
+    instructs the model to explain (never invent) intel results.
+    """
+    lines = ["THREAT INTELLIGENCE (IOC evidence — explain, never invent):"]
+    if not checks:
+        lines.append("No IOCs extracted; no threat-intel lookups performed.")
+        return "\n".join(lines)
+    for check in checks:
+        lines.append(f"IOC: {check['ioc']} ({check['ioc_type']})")
+        by_verdict: dict[str, list[str]] = {}
+        for result in check.get("results", []):
+            by_verdict.setdefault(result.get("verdict", "unknown"), []).append(
+                result.get("provider", "?"))
+        for verdict, providers in by_verdict.items():
+            lines.append(f"  {verdict} according to: {', '.join(providers)}")
+        if check.get("disagreement"):
+            lines.append("  NOTE: providers disagree — explain the disagreement, "
+                         "do not pick a side without evidence.")
+        hist = [r for r in check.get("results", [])
+                if r.get("provider") == "local"
+                and "previous" in r.get("raw_summary", "").lower()
+                or "seen" in r.get("raw_summary", "").lower()]
+        if hist:
+            lines.append(f"  Historical evidence: {hist[0]['raw_summary']}")
+    lines.append(f"Aggregated: worst verdict across IOCs decides urgency, "
+                 f"never a lone UNKNOWN.")
+    return "\n".join(lines)
