@@ -27,6 +27,7 @@ from app.api import (
     routes_knowledge,
     routes_stats,
     routes_system,
+    routes_threat_intel,
     routes_analytics,
 )
 from app.api.middleware import (
@@ -98,6 +99,7 @@ def _register_api_routes(app: FastAPI) -> None:
         routes_stats,
         routes_system,
         routes_knowledge,
+        routes_threat_intel,
     ):
         app.include_router(router_module.router)
 
