@@ -1,1 +1,1 @@
-from .metrics import get_metrics
+"""Observability package for TextShield RFC-009."""
