@@ -1,11 +1,13 @@
-# TextShield `v2.2.1` — Stabilization Release
+# TextShield `v4.0.0` — Threat Intelligence & IOC Intelligence Platform (RFC-008)
 
-### AI-Powered Multichannel Spam & Ham Detection with RAG-Based Explainable Analysis
+### AI-Powered Multichannel Spam & Ham Detection with RAG-Based Explainable Analysis + Threat Intelligence
 
 > **Detect Spam. Understand the Risk. Stay Protected.**
-> **Current:** `v2.2.1` (stabilization) on `v2.2-dev` — fully functional local app, all UI/API/DB flows verified, KB <2s, 0 JS errors.
+> **Current:** `v4.0.0` (RFC-008) on `v2.2-dev` — provider-independent threat intelligence framework with offline-first IOC analysis.
 
-> **Status:** ✅ Production-quality local application — Analyze → History → Analytics → Knowledge Base all verified end-to-end (see `docs/stabilization/`).
+> **Status:** ✅ Production-quality local application — Analyze → History → Analytics → Knowledge Base → Threat Intelligence all verified end-to-end.
+
+
 
 TextShield is a production-quality academic project that detects whether a
 message is **SPAM** or **HAM** across three channels — **SMS, general text,
