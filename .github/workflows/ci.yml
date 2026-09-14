@@ -4,7 +4,7 @@ on:
   push:
     branches: [ v2.2-dev, main ]
   pull_request:
-    branches: [ main ]
+    branches: [ v2.2-dev, main ]
 
 jobs:
   validate:
@@ -26,7 +26,7 @@ jobs:
       - name: Type check (mypy)
         run: mypy app --ignore-missing-imports || true
       - name: Tests
-        run: pytest -q --cov=app --cov-report=term-missing --cov-fail-under=60
+        run: pytest -q --cov=app --cov-report=term-missing --cov-report=xml --cov-fail-under=60
       - name: Benchmark suite
         run: python -m benchmarks.suite --iterations 5 --store --report; cat benchmarks/report.json
       - name: Security scan (pip audit)
