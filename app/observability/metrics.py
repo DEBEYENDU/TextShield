@@ -1,40 +1,30 @@
-"""Prometheus-style metrics & performance counters for RFC-011 Part 4."""
+"""Application metrics engine."""
+
 from __future__ import annotations
 
 import time
-from collections import Counter, defaultdict
+from threading import Lock
 from typing import Dict
 
-_counters: Counter[str] = Counter()
-_histograms: Dict[str, list[float]] = defaultdict(list)
+class MetricsEngine:
+    def __init__(self):
+        self._counters: Dict[str, int] = {}
+        self._timers: Dict[str, list[float]] = {}
+        self._lock = Lock()
 
+    def inc(self, name: str, value: int = 1) -> None:
+        with self._lock:
+            self._counters[name] = self._counters.get(name, 0) + value
 
-def incr(name: str, value: int = 1) -> None:
-    _counters[name] += value
+    def observe(self, name: str, duration_ms: float) -> None:
+        with self._lock:
+            self._timers.setdefault(name, []).append(duration_ms)
 
-
-def observe(name: str, value: float) -> None:
-    _histograms[name].append(value)
-    # keep last 1000
-    if len(_histograms[name]) > 1000:
-        _histograms[name] = _histograms[name][-1000:]
-
-
-def get_metrics() -> Dict[str, object]:
-    out: Dict[str, object] = {"counters": dict(_counters)}
-    hist = {}
-    for k, vals in _histograms.items():
-        if vals:
-            hist[k] = {
-                "count": len(vals),
-                "mean": sum(vals) / len(vals),
-                "min": min(vals),
-                "max": max(vals),
-                "p95": sorted(vals)[int(len(vals) * 0.95)] if len(vals) > 1 else vals[0],
+    def get(self) -> dict:
+        with self._lock:
+            return {
+                "counters": dict(self._counters),
+                "timers": {k: {"count": len(v), "avg_ms": sum(v)/len(v) if v else 0} for k, v in self._timers.items()}
             }
-    out["histograms"] = hist
-    out["uptime_seconds"] = time.time() - _start
-    return out
 
-
-_start = time.time()
+metrics = MetricsEngine()
