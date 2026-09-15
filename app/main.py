@@ -23,6 +23,7 @@ from app.api import (
     routes_analysis,
     routes_decision,
     routes_attribution,
+    routes_response,
     routes_evaluation,
     routes_history,
     routes_knowledge,
@@ -102,6 +103,7 @@ def _register_api_routes(app: FastAPI) -> None:
         routes_knowledge,
         routes_threat_intel,
         routes_attribution,
+        routes_response,
     ):
         app.include_router(router_module.router)
 
