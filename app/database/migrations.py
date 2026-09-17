@@ -13,13 +13,11 @@ from collections.abc import Callable
 
 Statement = str | Callable[[sqlite3.Connection], None]
 
-
 def _column_exists(conn: sqlite3.Connection, table: str, column: str) -> bool:
     cols = {
         row["name"] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()
     }
     return column in cols
-
 
 def _add_column(
     table: str, column: str, ddl: str
@@ -29,7 +27,6 @@ def _add_column(
             conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}")
 
     return _apply
-
 
 # Migration 1: original V1 schema (kept in place for existing databases).
 _INITIAL_SCHEMA: list[Statement] = [
@@ -112,10 +109,48 @@ _HARDENING: list[Statement] = [
     "CREATE INDEX IF NOT EXISTS idx_analyses_class_risk ON analyses (classification, risk_level)",
 ]
 
+# Migration 6: Intelligence candidate engine
+_INTELLIGENCE_CANDIDATES: list[Statement] = [
+    """
+    CREATE TABLE IF NOT EXISTS intelligence_candidates (
+        candidate_id TEXT PRIMARY KEY,
+        candidate_type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT NOT NULL,
+        source TEXT NOT NULL,
+        source_id TEXT,
+        priority INTEGER NOT NULL DEFAULT 5,
+        urgency INTEGER NOT NULL DEFAULT 5,
+        confidence REAL NOT NULL DEFAULT 0.5,
+        evidence_count INTEGER NOT NULL DEFAULT 0,
+        first_seen TEXT NOT NULL,
+        last_seen TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'NEW',
+        research_scope TEXT NOT NULL DEFAULT 'general',
+        related_analysis_id TEXT,
+        related_finding_id TEXT,
+        related_campaign_id TEXT,
+        related_entity_id TEXT,
+        related_ioc_id TEXT,
+        related_research_id TEXT,
+        related_actor_id TEXT,
+        reason TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        metadata TEXT
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_intel_candidates_status ON intelligence_candidates (status)",
+    "CREATE INDEX IF NOT EXISTS idx_intel_candidates_type ON intelligence_candidates (candidate_type)",
+    "CREATE INDEX IF NOT EXISTS idx_intel_candidates_source ON intelligence_candidates (source)",
+    "CREATE INDEX IF NOT EXISTS idx_intel_candidates_created_at ON intelligence_candidates (created_at)",
+]
+
 MIGRATIONS: list[tuple[int, str, list[Statement]]] = [
     (1, "initial_schema", _INITIAL_SCHEMA),
     (2, "v2_analysis_columns", _V2_COLUMNS),
     (3, "meta_tables", _META_TABLES),
     (4, "kb_metadata_unique_index", _KB_UNIQUE_INDEX),
     (5, "production_hardening_indexes", _HARDENING),
+    (6, "intelligence_candidates_table", _INTELLIGENCE_CANDIDATES),
 ]
