@@ -71,3 +71,10 @@ Outputs written to `data/processed/`:
 * Do **not** commit large downloaded datasets to the repository.
 * The prepare script is deterministic (stable shuffle seed), so repeated
   runs produce identical splits.
+
+## Current Workflow (v2.2.1 Stabilization)
+
+- **Status:** Fully functional local app — `prepare_dataset` → `train_model` → `build_knowledge_base` → `run.py` → `Analyze` → `History` → `Analytics` → `Knowledge Base` (<2s) all verified.
+- **Stabilization:** `v2.2.1` fixed frontend `common.js` order, `novalidate` forms, defensive JS, `retriever` warmup, `per_day` test, and logging. See `docs/stabilization/` and root `README.md#42`.
+- **Data Flow:** Raw CSVs in `raw/` → `scripts/prepare_dataset.py` → `data/processed/train.csv` + `test.csv` → `train_model.py` → `models/` → `build_knowledge_base.py` → `vector_db/` (persistent, not rebuilt on page load) → `RAG` evidence for analysis.
+- **Verification:** `pytest --ignore=tests/test_knowledge_base.py` 182 passed, `GET /api/knowledge-base` 29ms, `GET /api/history` 10ms, `POST /api/analyze` 14ms warm.

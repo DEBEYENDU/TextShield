@@ -1,156 +1,124 @@
 from __future__ import annotations
 
-from typing import Dict, Any, List, Optional
-from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Any
+from datetime import datetime, timezone
 
 
 class AnalysisHistory:
-    """Manages the history of completed analyses."""
+    """Tracks analysis runs and their results."""
 
-    def __init__(self, max_entries: int = 10000, retention_days: int = 365):
-        self.max_entries = max_entries
-        self.retention_days = retention_days
+    def __init__(self):
         self._records: List[Dict[str, Any]] = []
 
-    def add(
-        self, analysis_data: Dict[str, Any], record_type: str = "analysis"
-    ) -> Optional[int]:
-        """Add a new analysis to history."""
-        if len(self._records) >= self.max_entries:
-            self._records.pop(0)
+    def add(self, record: Dict[str, Any]) -> None:
+        self._records.append(record)
 
-        if "timestamp" not in analysis_data:
-            from datetime import datetime
+    def get_all(self) -> List[Dict[str, Any]]:
+        return self._records
 
-            analysis_data["timestamp"] = datetime.utcnow().isoformat()
-
-        # Enforce retention
-        timestamp = datetime.fromisoformat(
-            analysis_data.get("timestamp", datetime.utcnow().isoformat())
-        )
-        from datetime import datetime as dt_module
-
-        retention_cutoff = dt_module.utcnow() - timedelta(days=self.retention_days)
-        if timestamp < retention_cutoff:
-            return None
-
-        self._records.append(analysis_data)
-        record_id = len(self._records) - 1
-        return record_id
-
-    def get(
-        self,
-        record_id: Optional[int] = None,
-        classification: Optional[str] = None,
-        risk_level: Optional[str] = None,
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None,
-        skip: int = 0,
-        limit: Optional[int] = None,
-    ) -> List[Dict[str, Any]]:
-        records = self._records
-
-        if record_id is not None and 0 <= record_id < len(records):
-            return [records[record_id]]
-
-        if classification:
-            records = [r for r in records if r.get("classification") == classification]
-
-        if risk_level:
-            records = [r for r in records if r.get("risk_level") == risk_level]
-
-        if start_date or end_date:
-            from datetime import datetime
-
-            start = datetime.fromisoformat(start_date) if start_date else datetime.min
-            end = datetime.fromisoformat(end_date) if end_date else datetime.max
-            records = [
-                r
-                for r in records
-                if start
-                <= datetime.fromisoformat(r.get("timestamp", "1970-01-01"))
-                <= end
-            ]
-
-        records = records[skip:]
-        if limit is not None:
-            records = records[:limit]
-
-        return records
-
-    def search(
-        self, query: str, fields: Optional[List[str]] = None
-    ) -> List[Dict[str, Any]]:
-        if fields is None:
-            fields = ["classification", "risk_level", "message_type", "content"]
-
-        results = []
-        query_lower = query.lower()
-        for r in self._records:
-            match = any(
-                query_lower in str(r.get(field, "")).lower() for field in fields
-            )
-            if match:
-                results.append(r)
-
+    def filter(self, **kwargs) -> List[Dict[str, Any]]:
+        results = self._records
+        for key, value in kwargs.items():
+            results = [r for r in results if r.get(key) == value]
         return results
-
-    def count(self, **filters) -> int:
-        records = self._records
-        for key, value in filters.items():
-            records = [r for r in records if r.get(key) == value]
-        return len(records)
-
-    def export(self, format_name: str = "json") -> str:
-        import json
-
-        if format_name == "json":
-            return json.dumps(self._records, indent=2)
-        elif format_name == "csv":
-            import csv
-            import io
-
-            output = io.StringIO()
-            writer = csv.writer(output)
-            if self._records:
-                headers = self._records[0].keys()
-                writer.writerow(headers)
-                for r in self._records:
-                    writer.writerow(r.values())
-            return output.getvalue()
-        return json.dumps(self._records, indent=2)
 
 
 class HistoryService:
-    @staticmethod
-    def delete_older_than(days: int) -> int:
-        from datetime import datetime, timedelta
+    """Service for history queries and statistics."""
 
-        cutoff = datetime.utcnow() - timedelta(days=days)
-        original_count = (
-            len(AnalysisHistory._records) if AnalysisHistory._records else 0
-        )
-        AnalysisHistory._records = [
-            r
-            for r in AnalysisHistory._records
-            if datetime.fromisoformat(r.get("timestamp", "1970-01-01")) >= cutoff
-        ]
-        return original_count - len(AnalysisHistory._records)
+    def __init__(self, history: AnalysisHistory):
+        self.history = history
 
-    @staticmethod
-    def clear() -> int:
-        original_count = (
-            len(AnalysisHistory._records) if AnalysisHistory._records else 0
-        )
-        AnalysisHistory._records = []
-        return original_count
+    def get_recent(self, hours: int = 24) -> List[Dict[str, Any]]:
+        return [r for r in self.history._records if r.get("timestamp")]
 
-
-_history: Optional["AnalysisHistory"] = None
+    def statistics(self) -> Dict[str, Any]:
+        records = self.history._records
+        if not records:
+            return {}
+        return {
+            "total_analyses": len(records),
+            "ioc_type_distribution": {
+                k: sum(1 for r in records if r.get("ioc_type") == k)
+                for k in ["url", "domain", "ip", "email", "hash"]
+            },
+            "severity_distribution": {
+                k: sum(1 for r in records if r.get("severity") == k)
+                for k in ["Low", "Medium", "High", "Critical"]
+            },
+        }
 
 
-def get_history() -> "AnalysisHistory":
-    global _history
-    if _history is None:
-        _history = AnalysisHistory()
-    return _history
+def get_dashboard_history(
+    page: int = 1,
+    page_size: int = 50,
+    ioc_type: Optional[str] = None,
+    provider: Optional[str] = None,
+    severity: Optional[str] = None,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+) -> Dict[str, Any]:
+    """Return a paged, filterable threat history.
+
+    In production this would query the database / cache.
+    """
+    # Mock data
+    base = datetime.now(timezone.utc)
+    all_entries = []
+    for i in range(200):
+        entry = {
+            "id": i,
+            "ioc_value": f"http://example{i % 50}.com",
+            "ioc_type": ["url", "domain", "ip", "email", "hash"][i % 5],
+            "threat_score": round(0.1 + (i % 20) * 0.04, 2),
+            "provider": ["google_safe_browsing", "virustotal", "openphish", "phishtank", "urlhaus"][i % 5],
+            "severity": ["Low", "Medium", "High", "Critical"][i % 4],
+            "timestamp": (base - __import__("datetime").timedelta(hours=i * 2)).isoformat(),
+        }
+        all_entries.append(entry)
+
+    # Apply filters
+    filtered = all_entries
+    if ioc_type:
+        filtered = [e for e in filtered if e["ioc_type"] == ioc_type]
+    if provider:
+        filtered = [e for e in filtered if e["provider"] == provider]
+    if severity:
+        filtered = [e for e in filtered if e["severity"] == severity]
+    if start_date:
+        from datetime import datetime as _dt
+        start_ts = start_date.timestamp()
+        filtered = [e for e in filtered if _dt.fromisoformat(e["timestamp"]).timestamp() >= start_ts]
+    if end_date:
+        from datetime import datetime as _dt
+        end_ts = end_date.timestamp()
+        filtered = [e for e in filtered if _dt.fromisoformat(e["timestamp"]).timestamp() <= end_ts]
+
+    # Pagination
+    total = len(filtered)
+    start = (page - 1) * page_size
+    end = start + page_size
+    page_entries = filtered[start:end]
+
+    return {
+        "entries": page_entries,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": (total + page_size - 1) // page_size if total else 0,
+    }
+
+
+def get_severity_distribution(entries: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+    """Return severity distribution from a list of history entries."""
+    if entries is None:
+        entries = get_dashboard_history()["entries"]
+    counts = {"Low": 0, "Medium": 0, "High": 0, "Critical": 0}
+    for e in entries:
+        counts[e.get("severity", "Low")] = counts.get(e.get("severity", "Low"), 0) + 1
+    total = sum(counts.values())
+    return {
+        "distribution": counts,
+        "percentages": {k: (v / total * 100) if total else 0 for k, v in counts.items()},
+        "total": total,
+    }

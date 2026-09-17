@@ -23,8 +23,22 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 load_dotenv(BASE_DIR / ".env")
 
 
-def _get(key: str, default: str = "") -> str:
+def _get_secret(key: str, default: str = "") -> str:
+    """Env var or Docker secret file (<KEY>_FILE). Secret never logged."""
+    file_key = f"{key}_FILE"
+    file_path = os.getenv(file_key)
+    if file_path:
+        try:
+            p = Path(file_path)
+            if p.exists():
+                return p.read_text(encoding="utf-8").strip()
+        except Exception:
+            pass
     return os.getenv(key, default).strip()
+
+
+def _get(key: str, default: str = "") -> str:
+    return _get_secret(key, default)
 
 
 def _get_bool(key: str, default: bool = False) -> bool:
@@ -65,12 +79,8 @@ class Settings:
     MAX_MESSAGE_LENGTH: int = _get_int("MAX_MESSAGE_LENGTH", 10000)
 
     MODEL_PATH: Path = BASE_DIR / _get("MODEL_PATH", "models/spam_classifier.joblib")
-    VECTORIZER_PATH: Path = BASE_DIR / _get(
-        "VECTORIZER_PATH", "models/tfidf_vectorizer.joblib"
-    )
-    MODEL_METADATA_PATH: Path = BASE_DIR / _get(
-        "MODEL_METADATA_PATH", "models/model_metadata.json"
-    )
+    VECTORIZER_PATH: Path = BASE_DIR / _get("VECTORIZER_PATH", "models/tfidf_vectorizer.joblib")
+    MODEL_METADATA_PATH: Path = BASE_DIR / _get("MODEL_METADATA_PATH", "models/model_metadata.json")
     MODEL_METRICS_PATH: Path = BASE_DIR / _get(
         "MODEL_METRICS_PATH", "models/evaluation_report.json"
     )
@@ -89,9 +99,7 @@ class Settings:
     SEMANTIC_CACHE_SIZE: int = _get_int("SEMANTIC_CACHE_SIZE", 512)
     SEMANTIC_BATCH_SIZE: int = _get_int("SEMANTIC_BATCH_SIZE", 16)
     SEMANTIC_DEVICE: str = _get("SEMANTIC_DEVICE", "auto").lower()
-    SEMANTIC_LANGUAGE_DETECTION: str = _get(
-        "SEMANTIC_LANGUAGE_DETECTION", "auto"
-    ).lower()
+    SEMANTIC_LANGUAGE_DETECTION: str = _get("SEMANTIC_LANGUAGE_DETECTION", "auto").lower()
 
     # Intent & Behavior Analysis Engine (Phase 6).
     # Deterministic, configurable thresholds. No classification.
@@ -133,6 +141,46 @@ class Settings:
     FEATURE_LLM: bool = _get_bool("FEATURE_LLM", True)
     FEATURE_HISTORY: bool = _get_bool("FEATURE_HISTORY", True)
 
+    CONFIG_VERSION: str = "2.2.0"
+
+    # Security / hardening
+    API_KEY: str = _get_secret("API_KEY", "")
+    ALLOWED_ORIGINS: str = _get("ALLOWED_ORIGINS", "http://localhost:8000,http://127.0.0.1:8000")
+
+    # JWT / Auth (used by app/authentication/manager.py)
+    JWT_SECRET_KEY: str = _get_secret("JWT_SECRET_KEY", "change-me-in-production-please-rotate")
+    JWT_ALGORITHM: str = _get("JWT_ALGORITHM", "HS256")
+    JWT_EXPIRATION_MINUTES: int = _get_int("JWT_EXPIRATION_MINUTES", 60)
+
+    # RAG extended (centralized to avoid duplication with app/rag/config.py;
+    # RagConfig.from_settings reads these if present)
+    RAG_MAX_CONTEXT_CHUNKS: int = _get_int("RAG_MAX_CONTEXT_CHUNKS", 5)
+    RAG_MAX_TOKEN_LIMIT: int = _get_int("RAG_MAX_TOKEN_LIMIT", 2000)
+    RAG_SIMILARITY_THRESHOLD: float = _get_float("RAG_SIMILARITY_THRESHOLD", 0.35)
+
+    # Backward-compat alias: APP_ENV was renamed to ENVIRONMENT.
+    # New code should use settings.ENVIRONMENT; old code using settings.APP_ENV still works.
+    @property
+    def APP_ENV(self) -> str:  # noqa: N802
+        return self.ENVIRONMENT
+
+    @APP_ENV.setter
+    def APP_ENV(self, value: str) -> None:  # noqa: N802
+        self.ENVIRONMENT = value
+
+    # Lowercase JWT aliases for legacy code that uses settings.jwt_*
+    @property
+    def jwt_secret_key(self) -> str:
+        return self.JWT_SECRET_KEY
+
+    @property
+    def jwt_algorithm(self) -> str:
+        return self.JWT_ALGORITHM
+
+    @property
+    def jwt_expiration_minutes(self) -> int:
+        return self.JWT_EXPIRATION_MINUTES
+
     @property
     def database_path(self) -> Path:
         """Resolve the sqlite:/// URL to a path (absolute or project-relative)."""
@@ -158,10 +206,32 @@ class Settings:
         ):
             path.mkdir(parents=True, exist_ok=True)
 
+    def validate(self) -> list[str]:
+        """Startup validation; returns list of errors (empty = ok)."""
+        errors: list[str] = []
+        if not self.DATABASE_URL:
+            errors.append("DATABASE_URL must not be empty")
+        if not (1 <= self.MAX_MESSAGE_LENGTH <= 100000):
+            errors.append(f"MAX_MESSAGE_LENGTH {self.MAX_MESSAGE_LENGTH} out of range 1..100000")
+        if not (1 <= self.LLM_TIMEOUT_SECONDS <= 300):
+            errors.append(f"LLM_TIMEOUT_SECONDS {self.LLM_TIMEOUT_SECONDS} out of range 1..300")
+        if self.RAG_TOP_K < 1 or self.RAG_TOP_K > 20:
+            errors.append(f"RAG_TOP_K {self.RAG_TOP_K} out of range 1..20")
+        if self.RISK_MEDIUM_THRESHOLD >= self.RISK_HIGH_THRESHOLD:
+            errors.append("RISK thresholds mis-ordered: medium < high required")
+        if self.RISK_HIGH_THRESHOLD >= self.RISK_CRITICAL_THRESHOLD:
+            errors.append("RISK thresholds mis-ordered: high < critical required")
+        if self.ENVIRONMENT not in {"development", "staging", "production", "test"}:
+            errors.append(f"Unknown ENVIRONMENT {self.ENVIRONMENT}")
+        return errors
+
 
 def load_settings() -> Settings:
     """Factory used by the DI container and tests."""
     s = Settings()
+    errs = s.validate()
+    if errs:
+        raise ValueError("Invalid configuration: " + "; ".join(errs))
     s.ensure_directories()
     return s
 

@@ -6,6 +6,7 @@ Usage:
 Equivalent to:
     uvicorn app.main:app --host 127.0.0.1 --port 8000
 """
+
 import uvicorn
 
 from app.core.config import settings
@@ -16,7 +17,7 @@ def main() -> None:
         "app.main:app",
         host=settings.APP_HOST,
         port=settings.APP_PORT,
-        reload=settings.APP_ENV == "development",
+        reload=settings.ENVIRONMENT == "development",
     )
 
 

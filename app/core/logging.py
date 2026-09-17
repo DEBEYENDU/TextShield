@@ -50,14 +50,36 @@ def clear_request_id() -> None:
 
 
 def setup_logging(level: int = logging.INFO, log_dir: Path | None = None) -> None:
-    """Configure the root logger: console + rotating file, request-id filter."""
+    """Configure the root logger: console + rotating file, request-id filter.
+    
+    Structured logs: optionally JSON via LOG_FORMAT=json env. Metrics counters via get_metrics().
+    """
     root = logging.getLogger()
     if getattr(root, "_textshield_configured", False):
         return
-    root.setLevel(level)
+    # Allow LOG_FORMAT=json for structured logging
+    import os as _os
+    fmt = _os.getenv("LOG_FORMAT", "text").lower()
+    if fmt == "json":
+        import json as _json
 
-    formatter = logging.Formatter(_FORMAT, datefmt=_DATE_FORMAT)
+        class JsonFormatter(logging.Formatter):
+            def format(self, record: logging.LogRecord) -> str:
+                data = {
+                    "ts": self.formatTime(record, _DATE_FORMAT),
+                    "level": record.levelname,
+                    "logger": record.name,
+                    "request_id": getattr(record, "textshield_request_id", "-"),
+                    "msg": record.getMessage(),
+                }
+                if record.exc_info and record.exc_info[0]:
+                    data["exc_info"] = self.formatException(record.exc_info)
+                return _json.dumps(data)
+        formatter: logging.Formatter = JsonFormatter()
+    else:
+        formatter = logging.Formatter(_FORMAT, datefmt=_DATE_FORMAT)
     rid_filter = _RequestIdFilter()
+    root.setLevel(level)
 
     console = logging.StreamHandler()
     console.setFormatter(formatter)
@@ -68,8 +90,8 @@ def setup_logging(level: int = logging.INFO, log_dir: Path | None = None) -> Non
     directory.mkdir(parents=True, exist_ok=True)
     file_handler = RotatingFileHandler(
         directory / "textshield.log",
-        maxBytes=2_000_000,
-        backupCount=3,
+        maxBytes=5_000_000,
+        backupCount=5,
         encoding="utf-8",
     )
     file_handler.setFormatter(formatter)

@@ -21,13 +21,23 @@ from fastapi.templating import Jinja2Templates
 from app import __version__
 from app.api import (
     routes_analysis,
+    routes_decision,
+    routes_attribution,
+    routes_response,
+    routes_evaluation,
     routes_history,
     routes_knowledge,
     routes_stats,
     routes_system,
+    routes_threat_intel,
     routes_analytics,
 )
-from app.api.middleware import LoggingMiddleware, RequestIDMiddleware
+from app.api.middleware import (
+    LoggingMiddleware,
+    RateLimitMiddleware,
+    RequestIDMiddleware,
+    SecurityHeadersMiddleware,
+)
 from app.core.container import ServiceRegistry, create_container, verify_container
 from app.core.errors import register_exception_handlers
 from app.core.logging import get_logger, setup_logging
@@ -85,10 +95,15 @@ def _register_page_routes(app: FastAPI, templates: Jinja2Templates) -> None:
 def _register_api_routes(app: FastAPI) -> None:
     for router_module in (
         routes_analysis,
+        routes_decision,
+        routes_evaluation,
         routes_history,
         routes_stats,
         routes_system,
         routes_knowledge,
+        routes_threat_intel,
+        routes_attribution,
+        routes_response,
     ):
         app.include_router(router_module.router)
 
@@ -102,16 +117,63 @@ def create_app(registry: ServiceRegistry | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
+        # Startup validation
+        errs = settings.validate()
+        if errs:
+            raise RuntimeError("Config validation failed: " + "; ".join(errs))
+        logger.info("Startup: initializing database ...")
         init_db()
         mark_started()
         logger.info(
-            "TextShield v%s starting (env=%s, db=%s)",
+            "TextShield v%s starting (env=%s, db=%s, cfg_version=%s)",
             __version__,
             settings.ENVIRONMENT,
             settings.database_path,
+            settings.CONFIG_VERSION,
         )
-        yield
-        logger.info("TextShield shutting down")
+        # Warm vector store ONCE (reuse collection, never rebuild on page load)
+        try:
+            from app.rag.retriever import retriever
+
+            # This warms _backend_cache and avoids 80s Chroma init on first request
+            store = retriever.store
+            info = retriever.status()
+            logger.info(
+                "Vector store warmed: backend=%s, ready=%s, chunks=%s (path=%s)",
+                info.get("backend"),
+                info.get("ready"),
+                info.get("chunk_count"),
+                getattr(store, "path", "?"),
+            )
+        except Exception as exc:
+            logger.warning("Vector store warmup failed (non-fatal): %s", exc)
+
+        # Warm ML model ONCE (avoid lazy load on first analyze)
+        try:
+            from app.ml.classifier import classifier
+
+            alg = classifier.algorithm_name
+            logger.info("ML model warmed: %s (path=%s)", alg, settings.MODEL_PATH)
+        except Exception as exc:
+            logger.warning("ML model warmup failed (will load on first request): %s", exc)
+
+        logger.info("Startup complete: vector store, models, database initialized once (no duplicate init)")
+
+        try:
+            yield
+        finally:
+            # Graceful shutdown: clean caches, flush logs
+            logger.info("TextShield shutting down — draining...")
+            try:
+                # Provider isolation: shutdown registry if present
+                from app.threat.providers import get_threat_registry
+                get_threat_registry().shutdown_all()
+            except Exception:
+                pass
+            # Memory cleanup hints
+            import gc
+            gc.collect()
+            logger.info("TextShield shutdown complete")
 
     app = FastAPI(
         title=settings.APP_TITLE,
@@ -124,6 +186,8 @@ def create_app(registry: ServiceRegistry | None = None) -> FastAPI:
 
     register_exception_handlers(app)
     app.add_middleware(LoggingMiddleware)
+    app.add_middleware(RateLimitMiddleware)
+    app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(RequestIDMiddleware)
 
     if STATIC_DIR.exists():

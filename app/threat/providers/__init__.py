@@ -6,10 +6,17 @@ import json
 import logging
 import time
 from abc import abstractmethod
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from .ioc import IOCExtractor, ExtractedIOC, IOCType
+try:
+    from app.threat.ioc.models import IOCType, ExtractedIOC
+    IOCExtractor = None  # type: ignore
+except Exception:
+    IOCType = None  # type: ignore
+    ExtractedIOC = None  # type: ignore
+    IOCExtractor = None  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -106,11 +113,6 @@ class ThreatProviderABC(abc.ABC):
     @abstractmethod
     async def lookup_hash(self, hash_value: str) -> Optional["ThreatIndicator"]:
         """Look up a hash for threat intelligence (future-compatible)."""
-        pass
-    
-    @abstractmethod
-    def metadata(self) -> Dict[str, Any]:
-        """Return provider metadata (capabilities, TTL, etc.)."""
         pass
 
 

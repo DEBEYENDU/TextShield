@@ -1,0 +1,42 @@
+[project]
+name = "textshield"
+version = "2.2.1"
+description = "AI-powered multichannel spam & ham detection with RAG and threat intelligence"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [{name = "TextShield Contributors"}]
+keywords = ["spam", "phishing", "rag", "threat-intelligence"]
+classifiers = ["Development Status :: 5 - Production/Stable", "Intended Audience :: Developers"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+select = ["E","F","W","I","N","UP","S","B","C4","SIM"]
+ignore = ["S101", "S110"]
+exclude = ["vector_db","__pycache__"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+exclude = "tests|vector_db"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+filterwarnings = ["ignore::DeprecationWarning", "ignore::FutureWarning"]
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["*/__pycache__/*", "*/vector_db/*", "*/tests/*"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 60
+show_missing = true
+skip_covered = false

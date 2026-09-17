@@ -53,26 +53,55 @@ class Retriever(RetrieverBase):
         return self.status()["ready"]
 
     def status(self) -> dict:
-        """Build status with a short TTL cache (structure.json is on disk)."""
+        """Build status with a short TTL cache (structure.json is on disk). Fast path no provider load."""
         now = _time.time()
         if self._status_cache and now - self._status_cache[0] < _STATUS_TTL_SECONDS:
             return self._status_cache[1]
         try:
-            info = describe_store(self.store.path)
+            # Avoid loading embedding provider for status (slow). Use store only + settings for provider name.
+            try:
+                store = self.store
+                backend = store.backend_name
+                path = store.path
+            except Exception:
+                backend = "unknown"
+                path = None
+            # Prefer settings value without instantiating provider to keep <2s
+            try:
+                from app.core.settings import settings as _s
+                provider_name = getattr(_s, "EMBEDDING_PROVIDER", "hashing")
+            except Exception:
+                provider_name = "hashing"
+            # Still try provider.name if already cached, but don't force creation
+            if self._provider is not None:
+                try:
+                    provider_name = self._provider.name
+                except Exception:
+                    pass
+            if path is not None:
+                info = describe_store(path)
+            else:
+                info = None
             status = {
                 "ready": bool(info and info.get("chunk_count", 0) > 0),
-                "backend": self.store.backend_name,
-                "embedding_provider": self.provider.name,
+                "backend": backend,
+                "embedding_provider": provider_name,
                 "chunk_count": int(info.get("chunk_count", 0)) if info else 0,
                 "document_count": int(info.get("document_count", 0)) if info else 0,
                 "categories": info.get("categories", []) if info else [],
                 "built_at": info.get("built_at") if info else None,
             }
-        except Exception:
+        except Exception as exc:
+            logger.warning("RAG status failed: %s", exc)
+            # Fallback without provider/store access
+            try:
+                backend = self.store.backend_name
+            except Exception:
+                backend = "simple"
             status = {
                 "ready": False,
-                "backend": self.store.backend_name,
-                "embedding_provider": self.provider.name,
+                "backend": backend,
+                "embedding_provider": "hashing",
                 "chunk_count": 0,
                 "document_count": 0,
                 "categories": [],

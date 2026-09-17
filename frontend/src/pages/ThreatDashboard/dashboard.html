@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<h2>Threat Intelligence Dashboard</h2>
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-3">
+    <div class="container">
+        <a class="navbar-brand" href="{% url 'dashboard_summary' %}">Summary</a>
+        <a class="navbar-brand" href="{% url 'dashboard_providers' %}">Providers</a>
+        <a class="navbar-brand" href="{% url 'dashboard_history' %}">History</a>
+        <a class="navbar-brand" href="{% url 'dashboard_cache' %}">Cache</a>
+        <a class="navbar-brand" href="{% url 'dashboard_metrics' %}">Metrics</a>
+        <a class="navbar-brand" href="{% url 'dashboard_threats' %}">Threats</a>
+    </div>
+</nav>
+
+<div class="row">
+    <!-- Threat Overview -->
+    <div class="col-md-4 mb-3">
+        <div class="card h-100">
+            <div class="card-header">Threat Overview</div>
+            <div class="card-body">
+                <h5 class="card-title">Total Analyses</h5>
+                <p class="card-text" id="total-analyses">Loading…</p>
+                <h5 class="card-title">Threat Score Distribution</h5>
+                <canvas id="score-distribution" class="chart-container"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- IOC Explorer -->
+    <div class="col-md-4 mb-3">
+        <div class="card h-100">
+            <div class="card-header">IOC Explorer</div>
+            <div class="card-body">
+                <input type="text" id="ioc-search" class="form-control" placeholder="Search IOC…">
+                <div id="ioc-list" class="list-group"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Evidence Timeline -->
+    <div class="col-md-4 mb-3">
+        <div class="card h-100">
+            <div class="card-header">Evidence Timeline</div>
+            <div class="card-body">
+                <canvas id="evidence-timeline" class="chart-container"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Additional rows for other sections would go here -->
+<hr>
+<footer class="mt-3 text-muted small">TextShield v2.2 – Threat Intelligence Dashboard</footer>
+
+<script>
+    // Initialise charts after page load
+    document.addEventListener('DOMContentLoaded', function() {
+        // Example Chart.js line chart
+        var ctx = document.getElementById('score-distribution').getContext('2d');
+        window.scoreDist = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Low', 'Medium', 'High', 'Critical'],
+                datasets: [{
+                    label: 'Threat Score',
+                    data: [<?php // placeholder; will be filled by API ?>],
+                    backgroundColor: ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e']
+                }]
+            },
+            options: { responsive: true }
+        });
+
+        // IOC list placeholder fetch
+        fetch('/api/v2/dashboard/ioc-explorer')
+            .then(r => r.json())
+            .then(data => {
+                var list = document.getElementById('ioc-list');
+                data.forEach(function(ioc) {
+                    var li = document.createElement('li');
+                    li.className = 'list-group-item';
+                    li.textContent = ioc.ioc_value + ' (' + ioc.threat_status + ')';
+                    list.appendChild(li);
+                });
+            });
+    });
+</script>
+{% endblock %}

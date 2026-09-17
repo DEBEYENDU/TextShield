@@ -51,3 +51,15 @@ def config_status(registry: ServiceRegistry = Depends(get_request_registry)) -> 
 def app_status(registry: ServiceRegistry = Depends(get_request_registry)) -> dict:
     """Application status: uptime, feature flags, model readiness."""
     return registry.get("system_status").app_status()
+
+
+@router.get("/liveness")
+def liveness() -> dict:
+    """Liveness probe: process is alive (no dep checks). For k8s livenessProbe."""
+    return {"status": "alive", "checks": {"process": "ok"}}
+
+
+@router.get("/healthz")
+def healthz() -> dict:
+    """Minimal healthz for load-balancers."""
+    return {"ok": True}

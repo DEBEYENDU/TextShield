@@ -1,0 +1,8 @@
+# Code Owners
+
+* @DEBEYENDU
+
+# Directories
+/app/ @DEBEYENDU
+/docs/ @DEBEYENDU
+/tests/ @DEBEYENDU

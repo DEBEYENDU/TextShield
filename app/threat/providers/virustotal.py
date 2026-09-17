@@ -1,10 +1,13 @@
+"""Legacy flat module — canonical is app.threat.providers.virustotal.provider."""
 from __future__ import annotations
 
 import asyncio
 import json
 import logging
-from typing import Any, Dict, Optional
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
 
+from app.threat.ioc.models import IOCType
 from .threat_indicator import ThreatIndicator
 
 logger = logging.getLogger(__name__)

@@ -6,6 +6,20 @@
 </div>
 
 <div class="card">
+    <div class="field-row" style="gap:0.5rem; margin-bottom:1rem;">
+        <div class="field">
+            <label for="f-type">Message Type</label>
+            <select id="f-type"><option value="">All types</option><option value="sms">SMS</option><option value="text">Text</option><option value="email">Email</option></select>
+        </div>
+        <div class="field">
+            <label for="f-class">Classification</label>
+            <select id="f-class"><option value="">All</option><option value="SPAM">SPAM</option><option value="HAM">HAM</option></select>
+        </div>
+        <div class="field">
+            <label for="f-risk">Risk Level</label>
+            <select id="f-risk"><option value="">All</option><option value="LOW">LOW</option><option value="MEDIUM">MEDIUM</option><option value="HIGH">HIGH</option><option value="CRITICAL">CRITICAL</option></select>
+        </div>
+    </div>
     <div class="table-responsive">
         <table class="data">
             <thead>
@@ -15,13 +29,23 @@
                     <th>Classification</th>
                     <th>Risk Level</th>
                     <th>Confidence</th>
+                    <th>Hash</th>
                     <th>Actions</th>
                 </tr>
             </thead>
-            <tbody id="history-table-body">
+            <tbody id="history-body">
                 <!-- History rows loaded via AJAX -->
             </tbody>
+            <tbody id="history-table-body" style="display:none"></tbody>
         </table>
+        <div id="history-empty" class="alert alert-info hidden" style="margin-top:0.5rem;">No history yet — analyze a message to see it here.</div>
+    </div>
+    <div class="mt" style="display:flex; gap:0.5rem; align-items:center;">
+        <button class="btn-ghost" id="prev-btn" disabled>Previous</button>
+        <span id="page-info" class="muted"></span>
+        <button class="btn-ghost" id="next-btn" disabled>Next</button>
+        <span style="flex:1"></span>
+        <button class="btn btn-secondary" id="clear-btn" type="button">Clear All</button>
     </div>
 </div>
 

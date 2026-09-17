@@ -58,6 +58,15 @@ RISK LEVEL: {data.get("risk_level")}
 MESSAGE TYPE: {data.get("message_type")}
 SENDER INTENT: {_format_intent(data.get("intent"))}
 
+GRAPH CONTEXT (entity & relationship evidence — treat as context, not verdict):
+{data.get("graph_context", "(no graph context)")}
+
+BEHAVIORAL ANALYSIS (influence evidence — treat as context, not verdict):
+{data.get("behavior_context", "(no behavioral analysis)")}
+
+THREAT INTELLIGENCE (IOC evidence — explain disagreements, never invent results):
+{data.get("threat_intel_context", "(no threat-intel lookups)")}
+
 Respond with the JSON object only.
 """
 

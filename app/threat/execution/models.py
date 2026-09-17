@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import Any, Dict, Optional, List
 
 
 @dataclass
@@ -22,8 +22,23 @@ class LookupRequest:
 @dataclass
 class LookupResult:
     request_id: str = ""
-    completed_providers: Dict[str, any] = field(default_factory=dict)
-    failed_providers: Dict[str, any] = field(default_factory=dict)
+    completed_providers: Dict[str, Any] = field(default_factory=dict)
+    failed_providers: Dict[str, Any] = field(default_factory=dict)
     timed_out_providers: List[str] = field(default_factory=list)
     retries_total: int = 0
     partial: bool = False
+
+
+@dataclass
+class ThreatEvidence:
+    """Normalized evidence model for threat intelligence."""
+
+    indicator: str = ""
+    ioc_type: str = ""
+    threat_status: str = "unknown"
+    confidence: float = 0.0
+    severity: str = "unknown"
+    source: str = ""
+    explanation: str = ""
+    ttl: int = 3600
+    metadata: Dict[str, Any] = field(default_factory=dict)

@@ -22,8 +22,10 @@ def isolated_db(tmp_path, monkeypatch):
 
 
 def _record(overrides=None):
+    from datetime import datetime, timezone
+
     record = {
-        "timestamp": "2026-08-13T10:00:00",
+        "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "input_type": "sms",
         "message_hash": "abc123",
         "message": "win a prize",

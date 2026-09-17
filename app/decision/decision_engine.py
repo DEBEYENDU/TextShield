@@ -420,7 +420,7 @@ class EvidenceFusion:
     ) -> Dict[str, Dict[str, float]]:
         """Compute per-signal breakdown details."""
         breakdown = {}
-for sig_name in [
+        for sig_name in [
             "semantic",
             "intent",
             "behavior",
@@ -431,6 +431,7 @@ for sig_name in [
             "entities",
             "threat",
         ]:
+            data = getattr(inputs, sig_name, {}) or {}
             breakdown[sig_name] = {
                 "raw_score": self.normalize_signal(sig_name, data),
                 "weight": getattr(self.normalized_weights, f"{sig_name}_weight", 1.0),

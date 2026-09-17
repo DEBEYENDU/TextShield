@@ -1,0 +1,173 @@
+{
+ "description": "RFC-005 v4.0 multi-agent benchmark: consensus accuracy, false positives/negatives, per-agent precision over 15 cases.",
+ "legitimate": [
+  {
+   "id": "agt_leg_campus",
+   "text": "Dear Students, Technolearn placement cell announces a campus drive on 12th March. Register via the Google Form link. No fees.",
+   "expected_consensus": [
+    "Likely Legitimate"
+   ],
+   "expected_risk": [
+    "Low"
+   ]
+  },
+  {
+   "id": "agt_leg_university",
+   "text": "University convocation on 15th March. All graduating students are hereby informed to collect gowns from the registrar office between 9 AM and 4 PM.",
+   "expected_consensus": [
+    "Likely Legitimate"
+   ],
+   "expected_risk": [
+    "Low"
+   ]
+  },
+  {
+   "id": "agt_leg_salary",
+   "text": "Dear Employee, your salary of Rs.85,000 for August has been credited to account XX4821 by Tata Consultancy Services. Payslip on the HR portal.",
+   "expected_consensus": [
+    "Likely Legitimate"
+   ],
+   "expected_risk": [
+    "Low"
+   ]
+  },
+  {
+   "id": "agt_leg_otp",
+   "text": "Your OTP is 482916 for HDFC Bank login. Valid for 10 mins. Do not share with anyone.",
+   "expected_consensus": [
+    "Likely Legitimate",
+    "Likely Legitimate (contested)"
+   ],
+   "expected_risk": [
+    "Low"
+   ]
+  },
+  {
+   "id": "agt_leg_invoice",
+   "text": "Tax invoice INV-2026-4821 from Sharma Traders, GSTIN 07ABCDE1234F1Z5. Amount due Rs.12,400 payable by 30th September.",
+   "expected_consensus": [
+    "Likely Legitimate"
+   ],
+   "expected_risk": [
+    "Low"
+   ]
+  },
+  {
+   "id": "agt_leg_courier",
+   "text": "Your parcel AWB 4829163750 is out for delivery today via Delhivery. Expected delivery by 6 PM. Track with your tracking ID.",
+   "expected_consensus": [
+    "Likely Legitimate"
+   ],
+   "expected_risk": [
+    "Low"
+   ]
+  },
+  {
+   "id": "agt_leg_hospital",
+   "text": "Your appointment with Dr. Sharma at Apollo Hospital is confirmed for tomorrow 10:30 AM. Token number 14. Arrive 15 minutes early.",
+   "expected_consensus": [
+    "Likely Legitimate"
+   ],
+   "expected_risk": [
+    "Low"
+   ]
+  },
+  {
+   "id": "agt_leg_govt",
+   "text": "Public notice: Municipal Corporation water maintenance on Sunday. Citizens are advised to store water. Toll free helpline 1800-11-2929.",
+   "expected_consensus": [
+    "Likely Legitimate"
+   ],
+   "expected_risk": [
+    "Low"
+   ]
+  }
+ ],
+ "malicious": [
+  {
+   "id": "agt_mal_lottery",
+   "text": "CONGRATULATIONS! You WON Rs.25,00,000 in the lucky draw! Claim NOW by paying Rs.5,000 processing fee. Offer ends tonight!",
+   "expected_consensus": [
+    "Likely Malicious",
+    "Possibly Malicious"
+   ],
+   "expected_risk": [
+    "High",
+    "Medium"
+   ]
+  },
+  {
+   "id": "agt_mal_kyc",
+   "text": "URGENT: State Bank of India KYC suspended! Verify your login at http://bit.ly/sbi-kyc now and share OTP within 2 hours.",
+   "expected_consensus": [
+    "Likely Malicious",
+    "Possibly Malicious"
+   ],
+   "expected_risk": [
+    "High",
+    "Medium"
+   ]
+  },
+  {
+   "id": "agt_mal_refund",
+   "text": "Your refund of Rs.15,000 is ready. Download the refund app and grant remote access via AnyDesk to process it. Share the OTP shown.",
+   "expected_consensus": [
+    "Likely Malicious",
+    "Possibly Malicious"
+   ],
+   "expected_risk": [
+    "High",
+    "Medium"
+   ]
+  },
+  {
+   "id": "agt_mal_ceo",
+   "text": "This is the CEO. Confidential acquisition underway, keep this between us. Transfer Rs.5,00,000 to the vendor immediately. Do not call.",
+   "expected_consensus": [
+    "Likely Malicious",
+    "Possibly Malicious"
+   ],
+   "expected_risk": [
+    "High",
+    "Medium"
+   ]
+  },
+  {
+   "id": "agt_mal_crypto",
+   "text": "Crypto giveaway! Send 0.1 ETH to our wallet and receive 0.2 ETH back instantly. Verify now, limited slots only!",
+   "expected_consensus": [
+    "Likely Malicious",
+    "Possibly Malicious"
+   ],
+   "expected_risk": [
+    "High",
+    "Medium"
+   ]
+  },
+  {
+   "id": "agt_mal_bec",
+   "text": "Dear vendor, our bank details changed for future invoices. Transfer pending Rs.2,40,000 to the new account today. Authorized by the finance head.",
+   "expected_consensus": [
+    "Likely Malicious",
+    "Possibly Malicious",
+    "Uncertain \u00e2\u20ac\u201d conflicting signals"
+   ],
+   "expected_risk": [
+    "High",
+    "Medium"
+   ]
+  },
+  {
+   "id": "agt_mal_investment",
+   "text": "Double your money in 7 days! Guaranteed returns, RBI registered, 100% safe. Invest now, first 50 users only!",
+   "expected_consensus": [
+    "Likely Malicious",
+    "Possibly Malicious"
+   ],
+   "expected_risk": [
+    "High",
+    "Medium"
+   ]
+  }
+ ]
+}
