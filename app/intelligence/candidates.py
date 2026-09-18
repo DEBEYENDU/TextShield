@@ -14,10 +14,10 @@ def _make_id() -> str:
     return f"can-{uuid.uuid4().hex[:8]}"
 
 
-def _deduplicate(candidate_type: CandidateType, source: CandidateSource, related_entity_id: Optional[str], related_ioc_id: Optional[str]) -> bool:
+def _deduplicate(candidate_type: CandidateType, source: CandidateSource, related_entity_id: Optional[str], related_ioc_id: Optional[str], related_actor_id: Optional[str] = None) -> bool:
     if not config.deduplication_enabled:
         return False
-    existing = exists_by_key(candidate_type, source, related_entity_id, related_ioc_id)
+    existing = exists_by_key(candidate_type, source, related_entity_id, related_ioc_id, related_actor_id)
     return existing is not None
 
 
@@ -45,7 +45,7 @@ def create_candidate(
     if not config.enabled or not config.candidates_enabled:
         return None
 
-    if _deduplicate(candidate_type, source, related_entity_id, related_ioc_id):
+    if _deduplicate(candidate_type, source, related_entity_id, related_ioc_id, related_actor_id):
         return None
 
     now = datetime.utcnow()
@@ -141,7 +141,8 @@ def generate_contradiction(claim: str, source_a: str, source_b: str, source: Can
         source=source,
         reason=reason,
         research_scope="source verification",
-        confidence=0.6
+        confidence=0.6,
+        related_entity_id=claim[:200]
     )
 
 

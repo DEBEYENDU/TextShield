@@ -147,7 +147,7 @@ def update(candidate: ResearchCandidate) -> bool:
     return True
 
 
-def exists_by_key(candidate_type: CandidateType, source: CandidateSource, related_entity_id: Optional[str], related_ioc_id: Optional[str]) -> Optional[str]:
+def exists_by_key(candidate_type: CandidateType, source: CandidateSource, related_entity_id: Optional[str], related_ioc_id: Optional[str], related_actor_id: Optional[str] = None) -> Optional[str]:
     with get_connection() as conn:
         row = conn.execute(
             """
@@ -155,9 +155,10 @@ def exists_by_key(candidate_type: CandidateType, source: CandidateSource, relate
             WHERE candidate_type = ? AND source = ?
               AND (related_entity_id = ? OR ? IS NULL)
               AND (related_ioc_id = ? OR ? IS NULL)
+              AND (related_actor_id = ? OR ? IS NULL)
               AND status NOT IN ('DISMISSED', 'EXPIRED', 'COMPLETED')
             LIMIT 1
             """,
-            (candidate_type.value, source.value, related_entity_id, related_entity_id, related_ioc_id, related_ioc_id)
+            (candidate_type.value, source.value, related_entity_id, related_entity_id, related_ioc_id, related_ioc_id, related_actor_id, related_actor_id)
         ).fetchone()
     return row["candidate_id"] if row else None

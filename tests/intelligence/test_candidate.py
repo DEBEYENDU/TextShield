@@ -34,26 +34,34 @@ def test_schema_validation():
 
 
 def test_generate_unknown_ioc():
-    cand = generate_unknown_ioc("example.com", CandidateSource.HUNTING)
+    import uuid
+    ioc = f"example-{uuid.uuid4().hex[:8]}.com"
+    cand = generate_unknown_ioc(ioc, CandidateSource.HUNTING)
     assert cand is not None
     assert cand.candidate_type == CandidateType.UNKNOWN_IOC
-    assert cand.related_ioc_id == "example.com"
+    assert cand.related_ioc_id == ioc
 
 
 def test_deduplication():
-    c1 = generate_unknown_ioc("dup.com", CandidateSource.HUNTING)
+    import uuid
+    ioc = f"dup-{uuid.uuid4().hex[:8]}.com"
+    c1 = generate_unknown_ioc(ioc, CandidateSource.HUNTING)
     assert c1 is not None
-    c2 = generate_unknown_ioc("dup.com", CandidateSource.HUNTING)
+    c2 = generate_unknown_ioc(ioc, CandidateSource.HUNTING)
     assert c2 is None  # duplicate
 
 
 def test_attribution_hypothesis():
-    cand = generate_attribution_hypothesis("hyp-1", "Hypothesis description")
+    import uuid
+    hid = f"hyp-{uuid.uuid4().hex[:8]}"
+    cand = generate_attribution_hypothesis(hid, "Hypothesis description")
     assert cand is not None
     assert cand.candidate_type == CandidateType.ATTRIBUTION_HYPOTHESIS
 
 
 def test_contradiction():
-    cand = generate_contradiction("domain malicious", "srcA", "srcB")
+    import uuid
+    claim = f"domain-{uuid.uuid4().hex[:8]}"
+    cand = generate_contradiction(claim, "srcA", "srcB")
     assert cand is not None
     assert cand.candidate_type == CandidateType.CONTRADICTION
