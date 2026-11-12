@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "textshield-desktop"
+version = "0.1.0"
+description = "Windows desktop shell for the TextShield message analysis API"
+requires-python = ">=3.11"
+dependencies = ["PySide6>=6.8,<7"]
+
+[project.scripts]
+textshield-desktop = "textshield_desktop.app:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+textshield_desktop = ["resources/icons/*"]

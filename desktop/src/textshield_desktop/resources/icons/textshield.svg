@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="shield" x1="32" y1="20" x2="224" y2="236" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#17405c"/>
+      <stop offset="0.55" stop-color="#0c2238"/>
+      <stop offset="1" stop-color="#071421"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="40" y1="24" x2="216" y2="232" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7ce7f5"/>
+      <stop offset="1" stop-color="#1b8fab"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="248" height="248" rx="58" fill="#06111d"/>
+  <path d="M128 22L218 58V120C218 177 180 218 128 238C76 218 38 177 38 120V58L128 22Z"
+        fill="url(#shield)" stroke="url(#edge)" stroke-width="10" stroke-linejoin="round"/>
+  <path d="M78 122L112 156L178 88" fill="none" stroke="#5fe0d0" stroke-width="17"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="184" cy="184" r="20" fill="#2fb7d3"/>
+  <path d="M184 170V180M184 188V198M170 184H180M188 184H198" stroke="#06111d" stroke-width="5"
+        stroke-linecap="round"/>
+</svg>
