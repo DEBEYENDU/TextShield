@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QSizePolicy,
+    QSpacerItem,
     QTextBrowser,
     QVBoxLayout,
     QWidget,
@@ -53,11 +54,20 @@ class ResultView(QWidget):
         self._classification = QLabel("Awaiting analysis")
         self._classification.setObjectName("ClassificationBadge")
         self._classification.setProperty("classification", "NONE")
+        self._classification.setSizePolicy(
+            QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed
+        )
         self._confidence = QLabel("Confidence: -")
         self._confidence.setObjectName("Muted")
+        self._confidence.setSizePolicy(
+            QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed
+        )
         self._risk = QLabel("RISK: -")
         self._risk.setObjectName("RiskBadge")
         self._risk.setProperty("risk", "NONE")
+        self._risk.setSizePolicy(
+            QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed
+        )
         self._explanation = QLabel(
             "Paste a message and run an analysis against the local backend."
         )
@@ -99,6 +109,11 @@ class ResultView(QWidget):
         layout.addWidget(self._recommendation)
         layout.addWidget(self._details_hint)
         layout.addWidget(self._details, 1)
+        self._layout = layout
+        self._spacer = QSpacerItem(
+            0, 0, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding
+        )
+        layout.addItem(self._spacer)
 
     def clear(self) -> None:
         self._set_badge("Awaiting analysis", "NONE")
@@ -113,6 +128,7 @@ class ResultView(QWidget):
         self._details.clear()
         self._details.hide()
         self._details_hint.hide()
+        self._set_spacer(True)
 
     def show_error(self, message: str) -> None:
         self._set_badge("ERROR", "ERROR")
@@ -125,6 +141,7 @@ class ResultView(QWidget):
         self._details.clear()
         self._details.hide()
         self._details_hint.hide()
+        self._set_spacer(True)
 
     def set_result(self, data: dict[str, Any]) -> None:
         classification = _text(data.get("classification") or "UNKNOWN").upper()
@@ -155,10 +172,24 @@ class ResultView(QWidget):
 
         self._details.setHtml(self._build_details(data))
         if self._compact:
-            self._details_hint.setText("Open the dashboard for full evidence.")
+            self._details_hint.setText("Open the full window for full evidence.")
             self._details_hint.show()
         else:
             self._details.show()
+        self._set_spacer(self._compact)
+
+    def _set_spacer(self, expanding: bool) -> None:
+        self._spacer.changeSize(
+            0,
+            0,
+            QSizePolicy.Policy.Minimum,
+            (
+                QSizePolicy.Policy.Expanding
+                if expanding
+                else QSizePolicy.Policy.Fixed
+            ),
+        )
+        self._layout.invalidate()
 
     def classification_text(self) -> str:
         return self._classification.text()
@@ -197,34 +228,100 @@ class ResultView(QWidget):
 
         add("Message type", data.get("message_type"))
         add("Model", data.get("model_used"))
+        add("Explanation source", data.get("explanation_source"))
         intent = data.get("intent")
         if isinstance(intent, dict):
             add("Intent", intent.get("label") or intent.get("intent"))
             add("Intent description", intent.get("description"))
+            add("Intent evidence", intent.get("evidence"))
         elif intent:
             add("Intent", intent)
 
         indicators = data.get("indicators")
         if isinstance(indicators, list) and indicators:
-            values = ", ".join(
-                _text(item.get("name") if isinstance(item, dict) else item)
-                for item in indicators
-            )
-            add("Indicators", values)
+            values = []
+            for item in indicators:
+                if isinstance(item, dict):
+                    label = (
+                        item.get("indicator")
+                        or item.get("name")
+                        or item.get("category")
+                        or "indicator"
+                    )
+                    severity = item.get("severity")
+                    evidence = item.get("evidence")
+                    detail = _text(label)
+                    if severity:
+                        detail += f" ({severity})"
+                    if evidence:
+                        detail += f": {_short(evidence, 110)}"
+                    values.append(detail)
+                else:
+                    values.append(_text(item))
+            add("Indicators", "; ".join(values))
 
-        urls = data.get("urls_found")
+        risk_factors = data.get("risk_factors")
+        if isinstance(risk_factors, list) and risk_factors:
+            add("Risk factors", "; ".join(_text(item) for item in risk_factors))
+
+        urls = data.get("urls") or data.get("urls_found")
         if isinstance(urls, list) and urls:
-            add("URLs", ", ".join(_text(url) for url in urls))
+            values = []
+            for item in urls:
+                if isinstance(item, dict):
+                    value = item.get("url") or item.get("host") or ""
+                    warnings = item.get("warnings")
+                    if isinstance(warnings, list) and warnings:
+                        value += " [" + "; ".join(_text(w) for w in warnings) + "]"
+                    values.append(value)
+                else:
+                    values.append(_text(item))
+            add("URLs", "; ".join(value for value in values if value))
 
-        evidence = data.get("evidence")
+        evidence = data.get("rag_evidence") or data.get("evidence")
         if isinstance(evidence, list) and evidence:
             for index, item in enumerate(evidence[:3], start=1):
                 if isinstance(item, dict):
                     source = item.get("source") or item.get("document_id") or "RAG"
-                    content = item.get("content") or item.get("text") or item
-                    add(f"Evidence {index} ({source})", content)
+                    category = item.get("category")
+                    score = item.get("score")
+                    header = _text(source)
+                    if category:
+                        header += f" / {category}"
+                    if score is not None:
+                        header += f" / score {score}"
+                    content = (
+                        item.get("document")
+                        or item.get("content")
+                        or item.get("text")
+                        or item
+                    )
+                    add(f"Evidence {index} ({header})", content)
                 else:
                     add(f"Evidence {index}", item)
+
+        profile = data.get("message_profile")
+        if not isinstance(profile, dict) or not profile:
+            understanding = data.get("understanding")
+            if isinstance(understanding, dict):
+                profile = understanding.get("profile", {})
+        if isinstance(profile, dict) and profile:
+            add("Category", profile.get("category"))
+            add("Language", profile.get("language"))
+            add("Threat score", profile.get("threat_score"))
+            add("Trust score", profile.get("trust_score"))
+            add("Urgency", profile.get("urgency"))
+            add("Payment request", profile.get("payment_request"))
+            add("Context", profile.get("overall_context"))
+
+        rag_status = data.get("rag_status")
+        if isinstance(rag_status, dict) and rag_status:
+            add(
+                "RAG status",
+                f"ready={rag_status.get('ready')}, "
+                f"backend={rag_status.get('backend')}, "
+                f"chunks={rag_status.get('chunk_count')}",
+            )
 
         disclaimer = data.get("disclaimer")
         if disclaimer:

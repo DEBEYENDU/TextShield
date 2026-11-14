@@ -22,12 +22,38 @@ def test_result_view_renders_payload(qtbot) -> None:
             "risk_score": 88,
             "explanation": "Credential lure.",
             "recommended_action": "Do not click.",
-            "indicators": [{"name": "urgency"}, {"name": "url"}],
+            "indicators": [
+                {
+                    "indicator": "Urgency language",
+                    "severity": "high",
+                    "evidence": "within 24 hours",
+                }
+            ],
+            "urls": [
+                {
+                    "url": "http://example.invalid/login",
+                    "host": "example.invalid",
+                    "warnings": ["Non-HTTPS link detected"],
+                }
+            ],
+            "rag_evidence": [
+                {
+                    "document": "Phishing messages often use urgency.",
+                    "source": "phishing.md",
+                    "category": "phishing",
+                    "score": 0.62,
+                }
+            ],
+            "risk_factors": ["ML classified the message as PHISHING"],
         }
     )
     assert view._classification.text() == "PHISHING"
     assert "93.0%" in view._confidence.text()
     assert "HIGH" in view._risk.text()
+    details = view._details.toPlainText()
+    assert "Urgency language" in details
+    assert "example.invalid" in details
+    assert "Risk factors" in details
     view.show_error("Backend offline")
     assert view._classification.text() == "ERROR"
 

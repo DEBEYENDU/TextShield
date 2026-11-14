@@ -118,6 +118,42 @@ def test_analyze_error_detail(qtbot, backend_factory) -> None:
     qtbot.wait(100)
 
 
+def test_generic_get_returns_list(qtbot, backend_factory) -> None:
+    payload = [{"id": 1, "classification": "SPAM"}]
+    server = backend_factory(payload)
+    client = BackendClient(server.url)
+    with qtbot.waitSignal(client.requestFinished, timeout=3000) as blocker:
+        assert client.get("history", "/api/history?limit=1") is True
+    assert blocker.args == ["history", payload]
+    request = server.requests[0]
+    assert request[0] == "GET"
+    assert request[1] == "/api/history?limit=1"
+    client.close()
+    qtbot.wait(100)
+
+
+def test_analyze_email_payload(qtbot, backend_factory) -> None:
+    payload = {
+        "classification": "SPAM",
+        "confidence": 0.8,
+        "risk_level": "HIGH",
+        "risk_score": 80,
+        "explanation": "Email lure.",
+        "recommended_action": "Do not reply.",
+    }
+    server = backend_factory(payload)
+    client = BackendClient(server.url)
+    with qtbot.waitSignal(client.analysisFinished, timeout=3000) as blocker:
+        assert client.analyze("Subject: test\n\nBody", "email") is True
+    assert blocker.args[0] == payload
+    request = server.requests[0]
+    assert request[1] == "/api/analyze"
+    assert b'"input_type": "email"' in request[2]
+    assert b'"email_raw"' in request[2]
+    client.close()
+    qtbot.wait(100)
+
+
 def test_connection_refused(qtbot) -> None:
     server = FakeBackend({"status": "ok"})
     port = server._server.server_port

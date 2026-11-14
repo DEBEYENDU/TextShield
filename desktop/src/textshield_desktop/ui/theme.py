@@ -19,8 +19,38 @@ QFrame#Card {
     border: 1px solid #1f3249;
     border-radius: 10px;
 }
+QFrame#Sidebar {
+    background-color: #091422;
+    border-right: 1px solid #1f3249;
+}
 QLabel {
     background: transparent;
+}
+QLabel#SidebarTitle {
+    color: #f3f7ff;
+    font-size: 13pt;
+    font-weight: 700;
+}
+QLabel#NavSection {
+    color: #607a9c;
+    font-size: 7.5pt;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 4px 8px 2px 8px;
+}
+QLabel#PageTitle {
+    color: #f3f7ff;
+    font-size: 15pt;
+    font-weight: 700;
+}
+QLabel#UnavailableBadge {
+    background-color: #3d3514;
+    color: #ffe28a;
+    border: 1px solid #6b5a1f;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 7.5pt;
+    font-weight: 700;
 }
 QLabel#Title {
     font-size: 16pt;
@@ -74,6 +104,9 @@ QLabel#RiskBadge {
     color: #a9bfdc;
     font-size: 8pt;
     font-weight: 600;
+}
+QLabel#RiskBadge[risk="CRITICAL"] {
+    color: #ff6f86;
 }
 QLabel#RiskBadge[risk="HIGH"] {
     color: #ff9aab;
@@ -167,6 +200,75 @@ QPushButton#LinkButton {
 QPushButton#LinkButton:hover {
     color: #8ce5f5;
     text-decoration: underline;
+}
+QPushButton#NavButton {
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    color: #b8c9e3;
+    padding: 8px 10px;
+    text-align: left;
+}
+QPushButton#NavButton:hover {
+    background-color: #13243a;
+    border-color: #1f3249;
+    color: #f3f7ff;
+}
+QPushButton#NavButton:checked {
+    background-color: #123442;
+    border-color: #2fb7d3;
+    color: #8ce5f5;
+    font-weight: 600;
+}
+QPushButton#NavButton[unavailable="true"] {
+    color: #6f87aa;
+}
+QPushButton#NavButton[unavailable="true"]:hover {
+    color: #a9bfdc;
+}
+QComboBox {
+    background-color: #08111f;
+    border: 1px solid #22344d;
+    border-radius: 7px;
+    color: #e8f0ff;
+    padding: 5px 8px;
+}
+QComboBox:focus {
+    border-color: #2fb7d3;
+}
+QComboBox::drop-down {
+    border: none;
+    width: 18px;
+}
+QComboBox QAbstractItemView {
+    background-color: #0c1828;
+    border: 1px solid #29415f;
+    color: #dce7ff;
+    selection-background-color: #1b334d;
+    selection-color: #f3f7ff;
+    outline: none;
+}
+QTableWidget {
+    background-color: #08111f;
+    alternate-background-color: #0b1727;
+    border: 1px solid #22344d;
+    border-radius: 8px;
+    gridline-color: #16283e;
+}
+QHeaderView::section {
+    background-color: #0e1b2c;
+    border: none;
+    border-bottom: 1px solid #22344d;
+    color: #8ca2c4;
+    font-weight: 600;
+    padding: 6px;
+}
+QTableWidget::item {
+    padding: 5px;
+}
+QTableWidget::item:selected {
+    background-color: #173a4a;
+    color: #eef5ff;
 }
 QToolButton#IconButton {
     background: transparent;

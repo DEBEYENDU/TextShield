@@ -69,7 +69,7 @@ class DesktopApplication(QObject):
         area = screen.availableGeometry()
         return QPoint(
             area.right() - 424 - 24,
-            area.bottom() - 480 - 96,
+            area.bottom() - 520 - 96,
         )
 
     def _build_launcher_menu(self) -> None:
@@ -93,6 +93,8 @@ class DesktopApplication(QObject):
         self.launcher.position_changed.connect(self._save_launcher_position)
         self.overlay.position_changed.connect(self._save_overlay_position)
         self.overlay.expand_requested.connect(self._show_main)
+        self.overlay.navigate_requested.connect(self._show_main_section)
+        self.overlay.settings_requested.connect(self.show_settings)
         self.overlay.open_dashboard_requested.connect(self.open_dashboard)
         self.main_window.open_dashboard_requested.connect(self.open_dashboard)
         self.main_window.settings_requested.connect(self.show_settings)
@@ -121,9 +123,12 @@ class DesktopApplication(QObject):
     def _show_overlay(self) -> None:
         self.overlay.show_overlay()
 
-    def _show_main(self) -> None:
+    def _show_main(self, section: str | None = None) -> None:
         self.overlay.hide_overlay()
-        self.main_window.show_main()
+        self.main_window.show_main(section)
+
+    def _show_main_section(self, section: str) -> None:
+        self._show_main(section)
 
     def _save_overlay_position(self, value: str) -> None:
         self.config.overlay_geometry = value
@@ -219,9 +224,69 @@ class DesktopApplication(QObject):
         self._show_main()
         QTest.qWait(200)
         checks["main_window_visible"] = self.main_window.isVisible()
+        checks["main_sections"] = self.main_window.section_keys()
+        checks["unavailable_sections"] = all(
+            self.main_window.page(section) is not None
+            for section in ("intelligence", "research")
+        )
+
+        def wait_until(predicate, timeout: float = 20.0) -> bool:
+            deadline = time.monotonic() + timeout
+            while not predicate() and time.monotonic() < deadline:
+                QTest.qWait(100)
+            return bool(predicate())
+
+        self.main_window.show_main("history")
+        history = self.main_window.page("history")
+        checks["history_loaded"] = wait_until(
+            lambda: history is not None
+            and not getattr(history, "_loading", True)
+            and bool(getattr(history, "_state").text()),
+            20,
+        )
+        checks["history_total"] = getattr(history, "total", None)
+        checks["history_rows"] = (
+            getattr(history, "table").rowCount() if history is not None else 0
+        )
+
+        self.main_window.show_main("knowledge")
+        knowledge = self.main_window.page("knowledge")
+        checks["knowledge_loaded"] = wait_until(
+            lambda: knowledge is not None and bool(knowledge.status), 20
+        )
+        checks["knowledge_status"] = (
+            knowledge.status if knowledge is not None else {}
+        )
+
+        self.main_window.show_main("threat")
+        threat = self.main_window.page("threat")
+        checks["threat_loaded"] = wait_until(
+            lambda: threat is not None
+            and bool(threat.status)
+            and not getattr(threat, "_pending", set()),
+            20,
+        )
+        checks["threat_providers"] = (
+            threat.providers_count if threat is not None else 0
+        )
+        if threat is not None:
+            threat._ioc.setText("http://example.invalid/claim")
+            threat._check()
+            checks["threat_check_completed"] = wait_until(
+                lambda: "completed" in threat._state.text()
+                or "failed" in threat._state.text(),
+                30,
+            )
+            checks["threat_check_result"] = threat._results.toPlainText()
+
         self.main_window.hide()
         self._show_overlay()
         QTest.qWait(100)
+        self.overlay.show_menu()
+        checks["overlay_menu_open"] = self.overlay.menu_open()
+        checks["overlay_menu_items"] = self.overlay.menu_button_count()
+        self.overlay._show_analysis()
+        checks["overlay_menu_closed"] = not self.overlay.menu_open()
 
         self.client.check_health()
         QTest.qWait(1200)
@@ -272,6 +337,11 @@ class DesktopApplication(QObject):
                 "recommended_action",
             )
         }
+        checks["analysis_response"]["risk_factors"] = result.get("risk_factors")
+        checks["analysis_response"]["url_count"] = len(result.get("urls") or [])
+        checks["analysis_response"]["rag_evidence_count"] = len(
+            result.get("rag_evidence") or []
+        )
 
         required = [
             "icon_loaded",
@@ -281,6 +351,15 @@ class DesktopApplication(QObject):
             "overlay_hidden",
             "overlay_reopened",
             "main_window_visible",
+            "main_sections",
+            "unavailable_sections",
+            "history_loaded",
+            "knowledge_loaded",
+            "threat_loaded",
+            "threat_check_completed",
+            "overlay_menu_open",
+            "overlay_menu_closed",
+            "overlay_menu_items",
             "always_on_top",
             "backend_health_ok",
             "analysis_completed",

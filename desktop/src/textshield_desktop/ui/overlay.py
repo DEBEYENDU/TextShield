@@ -1,4 +1,4 @@
-"""Frameless floating overlay."""
+"""Frameless floating overlay with compact feature navigation."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QStackedWidget,
     QToolButton,
     QVBoxLayout,
     QWidget,
@@ -26,6 +27,7 @@ from .status_widget import BackendStatusWidget
 class TitleBar(QWidget):
     drag_finished = Signal()
     expand_requested = Signal()
+    menu_requested = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -36,6 +38,12 @@ class TitleBar(QWidget):
         icon.setPixmap(app_icon().pixmap(22, 22))
         title = QLabel("TextShield")
         title.setObjectName("OverlayTitle")
+
+        self._menu = QToolButton()
+        self._menu.setObjectName("IconButton")
+        self._menu.setText("\u2630")
+        self._menu.setToolTip("Navigate")
+        self._menu.clicked.connect(self.menu_requested.emit)
 
         self._expand = QToolButton()
         self._expand.setObjectName("IconButton")
@@ -61,9 +69,14 @@ class TitleBar(QWidget):
         layout.addWidget(icon)
         layout.addWidget(title)
         layout.addStretch(1)
+        layout.addWidget(self._menu)
         layout.addWidget(self._expand)
         layout.addWidget(minimize)
         layout.addWidget(close)
+
+    def set_menu_open(self, opened: bool) -> None:
+        self._menu.setText("\u2190" if opened else "\u2630")
+        self._menu.setToolTip("Back to analysis" if opened else "Navigate")
 
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
@@ -102,6 +115,8 @@ class OverlayWindow(QWidget):
     position_changed = Signal(str)
     expand_requested = Signal()
     open_dashboard_requested = Signal()
+    navigate_requested = Signal(str)
+    settings_requested = Signal()
 
     def __init__(
         self,
@@ -115,6 +130,7 @@ class OverlayWindow(QWidget):
         self._client = client
         self._hide_on_focus_out = config.hide_on_focus_out
         self._always_on_top = config.always_on_top
+        self._menu_buttons: list[QPushButton] = []
         self.setWindowTitle("TextShield")
         self.setWindowIcon(app_icon())
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
@@ -123,7 +139,7 @@ class OverlayWindow(QWidget):
             | Qt.WindowType.Tool
             | Qt.WindowType.WindowStaysOnTopHint
         )
-        self.setFixedSize(424, 480)
+        self.setFixedSize(424, 520)
         self._build()
         restore_position(
             self,
@@ -153,14 +169,57 @@ class OverlayWindow(QWidget):
         self._title_bar = TitleBar()
         self._title_bar.drag_finished.connect(self._on_drag_finished)
         self._title_bar.expand_requested.connect(self.expand_requested.emit)
+        self._title_bar.menu_requested.connect(self._toggle_menu)
         layout.addWidget(self._title_bar)
 
         content = QWidget()
         content_layout = QVBoxLayout(content)
         content_layout.setContentsMargins(16, 8, 16, 14)
         content_layout.setSpacing(9)
+
+        self._stack = QStackedWidget()
+        self._analysis_page = QWidget()
+        analysis_layout = QVBoxLayout(self._analysis_page)
+        analysis_layout.setContentsMargins(0, 0, 0, 0)
+        analysis_layout.setSpacing(0)
         self._analysis = AnalysisWidget(self._client, compact=True)
-        content_layout.addWidget(self._analysis)
+        analysis_layout.addWidget(self._analysis)
+        self._stack.addWidget(self._analysis_page)
+
+        self._menu_page = QWidget()
+        menu_layout = QVBoxLayout(self._menu_page)
+        menu_layout.setContentsMargins(0, 0, 0, 0)
+        menu_layout.setSpacing(5)
+        menu_title = QLabel("Navigate")
+        menu_title.setObjectName("SectionTitle")
+        menu_layout.addWidget(menu_title)
+        for label, key, unavailable in (
+            ("Analyze", "analyze", False),
+            ("History", "history", False),
+            ("Knowledge Base", "knowledge", False),
+            ("Threat Intelligence", "threat", False),
+            ("Intelligence \u00b7 unavailable", "intelligence", True),
+            ("Research \u00b7 unavailable", "research", True),
+            ("Settings", "settings", False),
+            ("Open Full Dashboard", "dashboard", False),
+        ):
+            button = QPushButton(label)
+            button.setObjectName("NavButton")
+            button.setCursor(Qt.CursorShape.PointingHandCursor)
+            if unavailable:
+                button.setProperty("unavailable", True)
+                button.setToolTip(
+                    "The running backend does not mount this API. "
+                    "Open the full window for details."
+                )
+            button.clicked.connect(
+                lambda checked=False, action=key: self._menu_action(action)
+            )
+            menu_layout.addWidget(button)
+            self._menu_buttons.append(button)
+        menu_layout.addStretch(1)
+        self._stack.addWidget(self._menu_page)
+        content_layout.addWidget(self._stack, 1)
 
         status_row = QHBoxLayout()
         status_row.setSpacing(5)
@@ -173,8 +232,34 @@ class OverlayWindow(QWidget):
         status_row.addWidget(dashboard)
         content_layout.addLayout(status_row)
         layout.addWidget(content)
+        self._show_analysis()
+
+    def _menu_action(self, action: str) -> None:
+        if action == "analyze":
+            self._show_analysis()
+        elif action == "settings":
+            self.settings_requested.emit()
+        elif action == "dashboard":
+            self.open_dashboard_requested.emit()
+        else:
+            self.navigate_requested.emit(action)
+
+    def _toggle_menu(self) -> None:
+        if self._stack.currentWidget() is self._analysis_page:
+            self.show_menu()
+        else:
+            self._show_analysis()
+
+    def _show_analysis(self) -> None:
+        self._stack.setCurrentWidget(self._analysis_page)
+        self._title_bar.set_menu_open(False)
+
+    def show_menu(self) -> None:
+        self._stack.setCurrentWidget(self._menu_page)
+        self._title_bar.set_menu_open(True)
 
     def show_overlay(self) -> None:
+        self._show_analysis()
         self.move(clamp_point(self.pos(), self.size()))
         self.show()
         self.raise_()
@@ -200,6 +285,12 @@ class OverlayWindow(QWidget):
 
     def set_status(self, connected: bool, data: dict) -> None:
         self._status.set_status(connected, data, self._client.base_url)
+
+    def menu_open(self) -> bool:
+        return self._stack.currentWidget() is self._menu_page
+
+    def menu_button_count(self) -> int:
+        return len(self._menu_buttons)
 
     def _on_drag_finished(self) -> None:
         self.move(clamp_point(self.pos(), self.size()))
