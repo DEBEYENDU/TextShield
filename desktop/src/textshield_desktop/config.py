@@ -7,6 +7,8 @@ from dataclasses import dataclass
 
 from PySide6.QtCore import QSettings, QUrl
 
+from .native.hotkey import DEFAULT_HOTKEY, validate_hotkey
+
 ORGANIZATION = "TextShield"
 APPLICATION = "TextShieldDesktop"
 DEFAULT_BACKEND_URL = "http://127.0.0.1:8000"
@@ -35,6 +37,8 @@ class DesktopConfig:
     launcher_visible: bool = True
     overlay_geometry: str = ""
     launcher_position: str = ""
+    hotkey: str = DEFAULT_HOTKEY
+    start_with_windows: bool = False
 
     @classmethod
     def load(cls, settings: QSettings | None = None) -> "DesktopConfig":
@@ -47,6 +51,11 @@ class DesktopConfig:
             backend_url = normalize_backend_url(backend_url)
         except ValueError:
             backend_url = DEFAULT_BACKEND_URL
+        hotkey = store.value(
+            "interaction/hotkey", DEFAULT_HOTKEY, type=str
+        )
+        if validate_hotkey(hotkey):
+            hotkey = DEFAULT_HOTKEY
         return cls(
             backend_url=backend_url,
             always_on_top=store.value("ui/always_on_top", True, type=bool),
@@ -54,6 +63,10 @@ class DesktopConfig:
             launcher_visible=store.value("ui/launcher_visible", True, type=bool),
             overlay_geometry=store.value("ui/overlay_geometry", "", type=str),
             launcher_position=store.value("ui/launcher_position", "", type=str),
+            hotkey=hotkey,
+            start_with_windows=store.value(
+                "interaction/start_with_windows", False, type=bool
+            ),
         )
 
     def save(self, settings: QSettings | None = None) -> None:
@@ -64,4 +77,8 @@ class DesktopConfig:
         store.setValue("ui/launcher_visible", self.launcher_visible)
         store.setValue("ui/overlay_geometry", self.overlay_geometry)
         store.setValue("ui/launcher_position", self.launcher_position)
+        store.setValue("interaction/hotkey", self.hotkey)
+        store.setValue(
+            "interaction/start_with_windows", self.start_with_windows
+        )
         store.sync()

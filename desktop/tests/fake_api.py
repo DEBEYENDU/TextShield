@@ -53,6 +53,9 @@ class FakeApi:
     def requests(self) -> list[tuple[str, str, bytes]]:
         return self._server.requests
 
+    def set_route(self, method: str, path: str, status: int, payload: Any) -> None:
+        self._server.routes[(method, path)] = (status, payload)
+
     def close(self) -> None:
         self._server.shutdown()
         self._server.server_close()

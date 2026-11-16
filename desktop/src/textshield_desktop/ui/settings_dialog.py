@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+from PySide6.QtGui import QKeySequence
 from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,
     QDialogButtonBox,
     QHBoxLayout,
+    QKeySequenceEdit,
     QLabel,
     QLineEdit,
     QPushButton,
@@ -18,19 +20,30 @@ from PySide6.QtWidgets import (
 
 from ..backend.client import BackendClient
 from ..config import DesktopConfig, normalize_backend_url
+from ..native.hotkey import DEFAULT_HOTKEY, validate_hotkey
+from ..native.startup import startup_supported
 
 
 class SettingsDialog(QDialog):
     def __init__(
-        self, config: DesktopConfig, parent: QWidget | None = None
+        self,
+        config: DesktopConfig,
+        parent: QWidget | None = None,
+        startup_available: bool | None = None,
+        hotkey_error: str = "",
     ) -> None:
         super().__init__(parent)
         self.config = config
         self.result_config: DesktopConfig | None = None
         self._probe: BackendClient | None = None
+        self._startup_available = (
+            startup_supported()
+            if startup_available is None
+            else startup_available
+        )
         self.setWindowTitle("TextShield Settings")
         self.setModal(True)
-        self.resize(500, 330)
+        self.resize(540, 480)
 
         title = QLabel("Connection")
         title.setObjectName("SectionTitle")
@@ -63,6 +76,38 @@ class SettingsDialog(QDialog):
         self._launcher = QCheckBox("Show floating launcher")
         self._launcher.setChecked(config.launcher_visible)
 
+        interaction_title = QLabel("Interaction")
+        interaction_title.setObjectName("SectionTitle")
+        hotkey_label = QLabel("Global hotkey")
+        hotkey_label.setObjectName("Muted")
+        self._hotkey = QKeySequenceEdit(QKeySequence(config.hotkey))
+        self._hotkey.setMaximumSequenceLength(1)
+        self._hotkey.setToolTip(
+            f"Default: {DEFAULT_HOTKEY}. The shortcut opens or hides the "
+            "overlay and focuses the analysis input."
+        )
+        hotkey_hint = QLabel(
+            f"Default: {DEFAULT_HOTKEY}. Must include Ctrl, Alt, Shift, or Win. "
+            "The shortcut opens or hides TextShield without submitting anything."
+        )
+        hotkey_hint.setObjectName("HintText")
+        hotkey_hint.setWordWrap(True)
+        self._hotkey_status = QLabel(hotkey_error)
+        self._hotkey_status.setObjectName("ErrorText")
+        self._hotkey_status.setWordWrap(True)
+        self._hotkey_status.setVisible(bool(hotkey_error))
+
+        self._startup = QCheckBox("Start TextShield with Windows")
+        self._startup.setChecked(
+            config.start_with_windows and self._startup_available
+        )
+        self._startup.setEnabled(self._startup_available)
+        self._startup.setToolTip(
+            "Creates or removes a per-user Windows startup entry."
+            if self._startup_available
+            else "Start with Windows is only available on Windows."
+        )
+
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Save
             | QDialogButtonBox.StandardButton.Cancel
@@ -81,6 +126,13 @@ class SettingsDialog(QDialog):
         layout.addWidget(self._always_on_top)
         layout.addWidget(self._hide_on_focus)
         layout.addWidget(self._launcher)
+        layout.addSpacing(8)
+        layout.addWidget(interaction_title)
+        layout.addWidget(hotkey_label)
+        layout.addWidget(self._hotkey)
+        layout.addWidget(hotkey_hint)
+        layout.addWidget(self._hotkey_status)
+        layout.addWidget(self._startup)
         layout.addStretch(1)
         layout.addWidget(buttons)
 
@@ -123,12 +175,26 @@ class SettingsDialog(QDialog):
         except ValueError as exc:
             self._set_probe_status(str(exc), error=True)
             return
+        hotkey = self._hotkey.keySequence().toString(
+            QKeySequence.SequenceFormat.PortableText
+        )
+        error = validate_hotkey(hotkey)
+        if error:
+            self._hotkey_status.setText(error)
+            self._hotkey_status.setVisible(True)
+            self._hotkey.setFocus()
+            return
+        self._hotkey_status.hide()
         self.result_config = replace(
             self.config,
             backend_url=url,
             always_on_top=self._always_on_top.isChecked(),
             hide_on_focus_out=self._hide_on_focus.isChecked(),
             launcher_visible=self._launcher.isChecked(),
+            hotkey=hotkey,
+            start_with_windows=(
+                self._startup.isChecked() and self._startup_available
+            ),
         )
         self.accept()
 

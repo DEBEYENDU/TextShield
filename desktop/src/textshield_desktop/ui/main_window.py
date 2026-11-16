@@ -31,6 +31,9 @@ class MainWindow(QMainWindow):
     open_dashboard_requested = Signal()
     settings_requested = Signal()
     hide_requested = Signal()
+    analyze_clipboard_requested = Signal()
+    copy_selection_requested = Signal()
+    clear_clipboard_requested = Signal()
 
     SECTION_LABELS = {
         "analyze": "Analyze",
@@ -149,8 +152,18 @@ class MainWindow(QMainWindow):
         content_layout.addLayout(header)
 
         self._stack = QStackedWidget()
+        analysis = AnalysisWidget(client, compact=False)
+        analysis.clipboard_analyze_requested.connect(
+            self.analyze_clipboard_requested.emit
+        )
+        analysis.copy_selection_requested.connect(
+            self.copy_selection_requested.emit
+        )
+        analysis.clear_clipboard_requested.connect(
+            self.clear_clipboard_requested.emit
+        )
         self._pages: dict[str, QWidget] = {
-            "analyze": AnalysisWidget(client, compact=False),
+            "analyze": analysis,
             "history": HistoryPage(client),
             "knowledge": KnowledgeBasePage(client),
             "threat": ThreatIntelPage(client),

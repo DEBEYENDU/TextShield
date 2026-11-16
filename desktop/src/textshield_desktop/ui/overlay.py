@@ -117,6 +117,9 @@ class OverlayWindow(QWidget):
     open_dashboard_requested = Signal()
     navigate_requested = Signal(str)
     settings_requested = Signal()
+    analyze_clipboard_requested = Signal()
+    copy_selection_requested = Signal()
+    clear_clipboard_requested = Signal()
 
     def __init__(
         self,
@@ -183,6 +186,15 @@ class OverlayWindow(QWidget):
         analysis_layout.setContentsMargins(0, 0, 0, 0)
         analysis_layout.setSpacing(0)
         self._analysis = AnalysisWidget(self._client, compact=True)
+        self._analysis.clipboard_analyze_requested.connect(
+            self.analyze_clipboard_requested.emit
+        )
+        self._analysis.copy_selection_requested.connect(
+            self.copy_selection_requested.emit
+        )
+        self._analysis.clear_clipboard_requested.connect(
+            self.clear_clipboard_requested.emit
+        )
         analysis_layout.addWidget(self._analysis)
         self._stack.addWidget(self._analysis_page)
 
@@ -258,12 +270,21 @@ class OverlayWindow(QWidget):
         self._stack.setCurrentWidget(self._menu_page)
         self._title_bar.set_menu_open(True)
 
-    def show_overlay(self) -> None:
+    def show_overlay(self, focus_input: bool = True) -> None:
         self._show_analysis()
         self.move(clamp_point(self.pos(), self.size()))
         self.show()
         self.raise_()
         self.activateWindow()
+        if focus_input:
+            self._analysis.focus_input()
+
+    def analyze_text(
+        self, text: str, input_type: str = "text", source: str = "clipboard"
+    ) -> None:
+        self.show_overlay(focus_input=True)
+        self._analysis.set_clipboard_text(text, input_type, source)
+        self._analysis.submit()
 
     def hide_overlay(self) -> None:
         self.hide()
@@ -291,6 +312,9 @@ class OverlayWindow(QWidget):
 
     def menu_button_count(self) -> int:
         return len(self._menu_buttons)
+
+    def analysis_widget(self) -> AnalysisWidget:
+        return self._analysis
 
     def _on_drag_finished(self) -> None:
         self.move(clamp_point(self.pos(), self.size()))

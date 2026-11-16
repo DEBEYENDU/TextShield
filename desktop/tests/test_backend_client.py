@@ -50,6 +50,10 @@ class FakeBackend:
     def requests(self) -> list[tuple[str, str, bytes]]:
         return self._server.requests
 
+    def set_response(self, response: dict, status: int = 200) -> None:
+        self._server.response = response
+        self._server.status = status
+
     def close(self) -> None:
         self._server.shutdown()
         self._server.server_close()
@@ -162,5 +166,25 @@ def test_connection_refused(qtbot) -> None:
     with qtbot.waitSignal(client.analysisFailed, timeout=5000) as blocker:
         assert client.analyze("hello") is True
     assert "Cannot reach the TextShield backend" in blocker.args[0]
+    client.close()
+    qtbot.wait(100)
+
+
+def test_health_recovers_after_outage(qtbot, backend_factory) -> None:
+    server = backend_factory({"status": "ok"})
+    client = BackendClient(server.url)
+    with qtbot.waitSignal(client.healthChanged, timeout=3000) as blocker:
+        client.check_health()
+    assert blocker.args[0] is True
+
+    server.set_response({"detail": "offline"}, status=503)
+    with qtbot.waitSignal(client.healthChanged, timeout=3000) as blocker:
+        client.check_health()
+    assert blocker.args[0] is False
+
+    server.set_response({"status": "ok"})
+    with qtbot.waitSignal(client.healthChanged, timeout=3000) as blocker:
+        client.check_health()
+    assert blocker.args[0] is True
     client.close()
     qtbot.wait(100)

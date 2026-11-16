@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QComboBox,
@@ -19,6 +19,10 @@ from .result_view import ResultView
 
 
 class AnalysisWidget(QWidget):
+    clipboard_analyze_requested = Signal()
+    copy_selection_requested = Signal()
+    clear_clipboard_requested = Signal()
+
     def __init__(
         self, client: BackendClient, compact: bool = False, parent: QWidget | None = None
     ) -> None:
@@ -46,6 +50,44 @@ class AnalysisWidget(QWidget):
         self._clear.setObjectName("SecondaryButton")
         self._clear.setCursor(Qt.CursorShape.PointingHandCursor)
 
+        self._source = QLabel("")
+        self._source.setObjectName("HintText")
+        self._source.hide()
+
+        self._clipboard_analyze = QPushButton("Analyze Clipboard")
+        self._copy_selection = QPushButton("Copy Selected Text")
+        self._clear_clipboard = QPushButton("Clear Clipboard")
+        clipboard_row = QHBoxLayout()
+        clipboard_row.setSpacing(4)
+        for button in (
+            self._clipboard_analyze,
+            self._copy_selection,
+            self._clear_clipboard,
+        ):
+            button.setObjectName("LinkButton")
+            button.setCursor(Qt.CursorShape.PointingHandCursor)
+            clipboard_row.addWidget(button)
+        clipboard_row.addStretch(1)
+        self._clipboard_analyze.clicked.connect(
+            self.clipboard_analyze_requested.emit
+        )
+        self._copy_selection.clicked.connect(
+            self.copy_selection_requested.emit
+        )
+        self._clear_clipboard.clicked.connect(
+            self.clear_clipboard_requested.emit
+        )
+        self._clipboard_analyze.setToolTip(
+            "Read the current clipboard text once, review it, then analyze."
+        )
+        self._copy_selection.setToolTip(
+            "Restore the previous window, copy its selected text, review it, "
+            "then analyze."
+        )
+        self._clear_clipboard.setToolTip(
+            "Remove all current clipboard content after confirmation."
+        )
+
         buttons = QHBoxLayout()
         buttons.setSpacing(8)
         buttons.addWidget(self._analyze)
@@ -64,6 +106,8 @@ class AnalysisWidget(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
         layout.addWidget(self._input)
+        layout.addWidget(self._source)
+        layout.addLayout(clipboard_row)
         layout.addLayout(buttons)
         layout.addWidget(self._error)
         layout.addWidget(self._result)
@@ -100,19 +144,26 @@ class AnalysisWidget(QWidget):
             )
 
     def _submit(self) -> None:
+        self.submit()
+
+    def submit(self) -> bool:
         if self._busy:
-            return
+            return False
         text = self._input.toPlainText().strip()
         if not text:
             self._show_error("Enter a message before running an analysis.")
-            return
+            return False
         self._error.hide()
         self._result.clear()
         if not self._client.analyze(text, self._input_type.currentData()):
             self._show_error("An analysis is already running.")
+            return False
+        return True
 
     def _clear_all(self) -> None:
         self._input.clear()
+        self._source.clear()
+        self._source.hide()
         self._error.hide()
         self._result.clear()
         self._input.setFocus()
@@ -151,6 +202,27 @@ class AnalysisWidget(QWidget):
 
     def set_input_text(self, text: str) -> None:
         self._input.setPlainText(text)
+        self._source.clear()
+        self._source.hide()
+
+    def set_clipboard_text(
+        self, text: str, kind: str = "text", source: str = "clipboard"
+    ) -> None:
+        self.set_input_type(kind)
+        self._input.setPlainText(text)
+        self._source.setText(
+            "Selected text \u00b7 reviewed"
+            if source == "selection"
+            else "Clipboard text \u00b7 reviewed"
+        )
+        self._source.show()
+        self._input.setFocus()
+
+    def focus_input(self) -> None:
+        self._input.setFocus()
+
+    def source_text(self) -> str:
+        return self._source.text()
 
     def input_type(self) -> str:
         return str(self._input_type.currentData())

@@ -25,11 +25,15 @@ def test_config_round_trip(tmp_path, monkeypatch) -> None:
     assert config.always_on_top is True
     assert config.hide_on_focus_out is True
     assert config.launcher_visible is True
+    assert config.hotkey == "Ctrl+Alt+Shift+T"
+    assert config.start_with_windows is False
 
     config.backend_url = "http://127.0.0.1:9100"
     config.always_on_top = False
     config.hide_on_focus_out = False
     config.launcher_visible = False
+    config.hotkey = "Ctrl+Alt+Shift+F12"
+    config.start_with_windows = True
     config.overlay_geometry = "100,200"
     config.launcher_position = "300,400"
     config.save(settings)
@@ -39,6 +43,8 @@ def test_config_round_trip(tmp_path, monkeypatch) -> None:
     assert loaded.always_on_top is False
     assert loaded.hide_on_focus_out is False
     assert loaded.launcher_visible is False
+    assert loaded.hotkey == "Ctrl+Alt+Shift+F12"
+    assert loaded.start_with_windows is True
     assert loaded.overlay_geometry == "100,200"
     assert loaded.launcher_position == "300,400"
 
@@ -50,3 +56,12 @@ def test_config_env_override(tmp_path, monkeypatch) -> None:
     )
     settings.setValue("backend/url", "http://127.0.0.1:8000")
     assert DesktopConfig.load(settings).backend_url == "http://127.0.0.1:9200"
+
+
+def test_config_invalid_hotkey_falls_back(tmp_path) -> None:
+    settings = QSettings(
+        str(tmp_path / "invalid-hotkey.ini"), QSettings.Format.IniFormat
+    )
+    settings.setValue("interaction/hotkey", "F12")
+    settings.sync()
+    assert DesktopConfig.load(settings).hotkey == "Ctrl+Alt+Shift+T"

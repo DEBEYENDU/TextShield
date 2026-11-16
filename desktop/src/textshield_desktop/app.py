@@ -11,7 +11,13 @@ from pathlib import Path
 from PySide6.QtCore import QObject, QPoint, Qt, QTimer, QUrl
 from PySide6.QtGui import QDesktopServices, QGuiApplication
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QDialog, QMenu, QSystemTrayIcon
+from PySide6.QtWidgets import (
+    QApplication,
+    QDialog,
+    QMenu,
+    QMessageBox,
+    QSystemTrayIcon,
+)
 
 from .backend.client import BackendClient
 from .config import (
@@ -20,6 +26,11 @@ from .config import (
     DesktopConfig,
     normalize_backend_url,
 )
+from .native.clipboard import ClipboardService
+from .native.hotkey import GlobalHotkey
+from .native.startup import StartupManager
+from .native.windows import IS_WINDOWS, foreground_window, is_own_window
+from .ui.clipboard_dialog import ClipboardReviewDialog
 from .ui.geometry import position_string
 from .ui.icons import app_icon
 from .ui.launcher import LauncherWindow
@@ -43,6 +54,22 @@ class DesktopApplication(QObject):
         self._shutdown_done = False
         self._last_health_ok = False
         self._last_health: dict = {}
+        self._last_external_window = 0
+        self._hotkey_error = ""
+        self._startup_error = ""
+        self._startup_launch = bool(args and getattr(args, "startup", False))
+
+        self.clipboard = ClipboardService(self)
+        self.startup = StartupManager()
+        self.startup_available = self.startup.available
+        if self.startup_available:
+            try:
+                self.config.start_with_windows = self.startup.enabled()
+            except OSError as exc:
+                self.config.start_with_windows = False
+                self._startup_error = str(exc)
+        else:
+            self.config.start_with_windows = False
 
         self.client = BackendClient(self.config.backend_url, self)
         self.launcher = LauncherWindow(self.config)
@@ -54,6 +81,7 @@ class DesktopApplication(QObject):
             self.config, self.client, self.tray_available
         )
         self.tray = TrayIcon(self.tray_available, self)
+        self.hotkey = GlobalHotkey(self)
         self._launcher_menu: QMenu | None = None
         self._build_launcher_menu()
         self._connect_signals()
@@ -96,20 +124,70 @@ class DesktopApplication(QObject):
         self.overlay.navigate_requested.connect(self._show_main_section)
         self.overlay.settings_requested.connect(self.show_settings)
         self.overlay.open_dashboard_requested.connect(self.open_dashboard)
+        self.overlay.analyze_clipboard_requested.connect(
+            self.analyze_clipboard
+        )
+        self.overlay.copy_selection_requested.connect(
+            self.copy_selected_text
+        )
+        self.overlay.clear_clipboard_requested.connect(self.clear_clipboard)
         self.main_window.open_dashboard_requested.connect(self.open_dashboard)
         self.main_window.settings_requested.connect(self.show_settings)
+        self.main_window.analyze_clipboard_requested.connect(
+            self.analyze_clipboard
+        )
+        self.main_window.copy_selection_requested.connect(
+            self.copy_selected_text
+        )
+        self.main_window.clear_clipboard_requested.connect(
+            self.clear_clipboard
+        )
         self.tray.show_overlay_requested.connect(self._show_overlay)
+        self.tray.analyze_clipboard_requested.connect(self.analyze_clipboard)
+        self.tray.copy_selection_requested.connect(self.copy_selected_text)
+        self.tray.clear_clipboard_requested.connect(self.clear_clipboard)
         self.tray.launcher_toggled.connect(self._set_launcher_visible)
         self.tray.always_on_top_toggled.connect(self._set_always_on_top)
         self.tray.open_dashboard_requested.connect(self.open_dashboard)
         self.tray.settings_requested.connect(self.show_settings)
+        self.tray.reconnect_requested.connect(self.reconnect_backend)
+        self.tray.startup_toggled.connect(self._set_start_with_windows)
         self.tray.quit_requested.connect(self.quit)
+        self.hotkey.activated.connect(self._toggle_overlay)
 
     def start(self) -> None:
-        self._set_launcher_visible(self.config.launcher_visible)
+        self.tray.set_startup_available(self.startup_available)
+        self.tray.set_start_with_windows(self.config.start_with_windows)
+        if self.startup_available and self.config.start_with_windows:
+            try:
+                self.startup.set_enabled(True)
+            except OSError as exc:
+                self._startup_error = str(exc)
+                try:
+                    enabled = self.startup.enabled()
+                except OSError:
+                    enabled = False
+                self.config.start_with_windows = enabled
+                self.tray.set_start_with_windows(enabled)
+        if self._startup_launch and self.tray_available:
+            self.launcher.hide_launcher()
+            self.tray.set_launcher_visible(False)
+        else:
+            self._set_launcher_visible(self.config.launcher_visible)
         self.tray.show()
-        if not self.tray_available and not self.config.launcher_visible:
+        if not self.tray_available and not self.launcher.isVisible():
             self._show_main()
+        if not self.hotkey.set_shortcut(self.config.hotkey):
+            self._hotkey_error = self.hotkey.last_error
+            if self.tray_available:
+                self.tray.showMessage(
+                    "TextShield hotkey",
+                    self._hotkey_error,
+                    QSystemTrayIcon.MessageIcon.Warning,
+                    6000,
+                )
+        else:
+            self._hotkey_error = ""
         self.health_timer.start()
         self.client.check_health()
 
@@ -118,10 +196,24 @@ class DesktopApplication(QObject):
         self._last_health = data
         self.overlay.set_status(connected, data)
         self.main_window.set_backend_status(connected, data)
-        self.tray.set_backend_status(connected, self.client.base_url)
+        self.tray.set_backend_status(connected, self.client.base_url, data)
 
-    def _show_overlay(self) -> None:
-        self.overlay.show_overlay()
+    def _show_overlay(self, focus_input: bool = True) -> None:
+        if not self.overlay.isVisible():
+            self._remember_external_window()
+        self.overlay.show_overlay(focus_input=focus_input)
+
+    def _toggle_overlay(self) -> None:
+        if self.overlay.isVisible() and self.overlay.isActiveWindow():
+            self.overlay.hide_overlay()
+            return
+        self._remember_external_window()
+        self.overlay.show_overlay(focus_input=True)
+
+    def _remember_external_window(self) -> None:
+        hwnd = foreground_window()
+        if hwnd and not is_own_window(hwnd):
+            self._last_external_window = hwnd
 
     def _show_main(self, section: str | None = None) -> None:
         self.overlay.hide_overlay()
@@ -129,6 +221,160 @@ class DesktopApplication(QObject):
 
     def _show_main_section(self, section: str) -> None:
         self._show_main(section)
+
+    def _dialog_parent(self):
+        if self.main_window.isVisible():
+            return self.main_window
+        return self.overlay
+
+    def _show_message(
+        self,
+        icon: QMessageBox.Icon,
+        title: str,
+        text: str,
+    ) -> None:
+        parent = self._dialog_parent()
+        lock_overlay = parent is self.overlay
+        if lock_overlay:
+            self.overlay.set_hide_on_focus_out(False)
+        try:
+            QMessageBox(
+                icon,
+                title,
+                text,
+                QMessageBox.StandardButton.Ok,
+                parent,
+            ).exec()
+        finally:
+            if lock_overlay:
+                self.overlay.set_hide_on_focus_out(
+                    self.config.hide_on_focus_out
+                )
+
+    def _ask(self, title: str, text: str) -> bool:
+        parent = self._dialog_parent()
+        lock_overlay = parent is self.overlay
+        if lock_overlay:
+            self.overlay.set_hide_on_focus_out(False)
+        try:
+            answer = QMessageBox.question(
+                parent,
+                title,
+                text,
+                QMessageBox.StandardButton.Yes
+                | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            return answer == QMessageBox.StandardButton.Yes
+        finally:
+            if lock_overlay:
+                self.overlay.set_hide_on_focus_out(
+                    self.config.hide_on_focus_out
+                )
+
+    def _review_text(self, text: str, source: str) -> None:
+        if self.main_window.isVisible():
+            parent = self.main_window
+            target = self.main_window.analysis_widget()
+        else:
+            self._show_overlay(focus_input=False)
+            parent = self.overlay
+            target = self.overlay.analysis_widget()
+        lock_overlay = parent is self.overlay
+        if lock_overlay:
+            self.overlay.set_hide_on_focus_out(False)
+        try:
+            dialog = ClipboardReviewDialog(
+                text,
+                source=source,
+                backend_online=self._last_health_ok,
+                parent=parent,
+            )
+            if dialog.exec() != QDialog.DialogCode.Accepted:
+                return
+            target.set_clipboard_text(
+                dialog.analysis_text,
+                dialog.input_type(),
+                source,
+            )
+            target.submit()
+        finally:
+            if lock_overlay:
+                self.overlay.set_hide_on_focus_out(
+                    self.config.hide_on_focus_out
+                )
+
+    def analyze_clipboard(self) -> None:
+        text = self.clipboard.text()
+        if not text.strip():
+            self._show_overlay()
+            self._show_message(
+                QMessageBox.Icon.Information,
+                "Analyze Clipboard",
+                "The clipboard does not contain text. Copy a message in "
+                "another application, then try again.",
+            )
+            return
+        self._review_text(text, "clipboard")
+
+    def copy_selected_text(self) -> None:
+        if not IS_WINDOWS:
+            self._show_message(
+                QMessageBox.Icon.Information,
+                "Copy Selected Text",
+                "Copying selected text is only supported on Windows.",
+            )
+            return
+        target = self._last_external_window
+        if not target or is_own_window(target):
+            target = foreground_window()
+        if not target or is_own_window(target):
+            self._show_overlay()
+            self._show_message(
+                QMessageBox.Icon.Information,
+                "Copy Selected Text",
+                "Select text in another application, then press the TextShield "
+                "hotkey and choose Copy Selected Text. TextShield does not "
+                "inspect other windows in the background.",
+            )
+            return
+        self.overlay.hide_overlay()
+        text, error = self.clipboard.capture_selected_text(target)
+        if error:
+            self._show_overlay()
+            self._show_message(
+                QMessageBox.Icon.Warning,
+                "Copy Selected Text",
+                error,
+            )
+            return
+        self._review_text(text, "selection")
+
+    def clear_clipboard(self) -> None:
+        if not self.clipboard.has_content():
+            self._show_overlay()
+            self._show_message(
+                QMessageBox.Icon.Information,
+                "Clear Clipboard",
+                "The clipboard is already empty.",
+            )
+            return
+        if not self._ask(
+            "Clear Clipboard",
+            "Remove all current clipboard content? This cannot be undone.",
+        ):
+            return
+        self.clipboard.clear()
+        if self.tray_available:
+            self.tray.showMessage(
+                "TextShield",
+                "Clipboard cleared.",
+                QSystemTrayIcon.MessageIcon.Information,
+                2500,
+            )
+
+    def reconnect_backend(self) -> None:
+        self.client.check_health()
 
     def _save_overlay_position(self, value: str) -> None:
         self.config.overlay_geometry = value
@@ -158,11 +404,48 @@ class DesktopApplication(QObject):
         QDesktopServices.openUrl(QUrl(self.client.base_url + "/"))
 
     def show_settings(self) -> None:
-        dialog = SettingsDialog(self.config, None)
+        dialog = SettingsDialog(
+            self.config,
+            None,
+            startup_available=self.startup_available,
+            hotkey_error=self._hotkey_error,
+        )
         if dialog.exec() == QDialog.DialogCode.Accepted and dialog.result_config:
-            self.apply_config(dialog.result_config)
+            error = self.apply_config(dialog.result_config)
+            if error:
+                self._show_message(
+                    QMessageBox.Icon.Warning,
+                    "Settings",
+                    error,
+                )
 
-    def apply_config(self, config: DesktopConfig) -> None:
+    def apply_config(self, config: DesktopConfig) -> str | None:
+        errors: list[str] = []
+        previous_hotkey = self.config.hotkey
+        if config.hotkey != previous_hotkey:
+            if not self.hotkey.set_shortcut(config.hotkey):
+                error = self.hotkey.last_error
+                errors.append(error)
+                config.hotkey = previous_hotkey
+                self.hotkey.set_shortcut(previous_hotkey)
+                self._hotkey_error = error
+            else:
+                self._hotkey_error = ""
+        if self.startup_available:
+            try:
+                startup_enabled = self.startup.enabled()
+            except OSError as exc:
+                startup_enabled = False
+                errors.append(str(exc))
+            if config.start_with_windows != startup_enabled:
+                try:
+                    self.startup.set_enabled(config.start_with_windows)
+                except OSError as exc:
+                    errors.append(str(exc))
+                    try:
+                        config.start_with_windows = self.startup.enabled()
+                    except OSError:
+                        config.start_with_windows = False
         self.config = config
         self.config.save()
         self.client.set_base_url(config.backend_url)
@@ -172,7 +455,31 @@ class DesktopApplication(QObject):
         self.launcher.set_always_on_top(config.always_on_top)
         self.main_window.set_backend_url(config.backend_url)
         self.tray.set_always_on_top(config.always_on_top)
+        self.tray.set_start_with_windows(config.start_with_windows)
         self._set_launcher_visible(config.launcher_visible)
+        return "\n".join(errors) or None
+
+    def _set_start_with_windows(self, enabled: bool) -> None:
+        if not self.startup_available:
+            self.tray.set_start_with_windows(False)
+            return
+        try:
+            self.startup.set_enabled(enabled)
+        except OSError as exc:
+            try:
+                current = self.startup.enabled()
+            except OSError:
+                current = False
+            self.tray.set_start_with_windows(current)
+            self._show_message(
+                QMessageBox.Icon.Warning,
+                "Start with Windows",
+                str(exc),
+            )
+            return
+        self.config.start_with_windows = enabled
+        self.config.save()
+        self.tray.set_start_with_windows(enabled)
 
     def quit(self) -> None:
         self.qapp.quit()
@@ -185,6 +492,7 @@ class DesktopApplication(QObject):
         self.config.launcher_position = position_string(self.launcher)
         self.config.save()
         self.health_timer.stop()
+        self.hotkey.close()
         self.tray.hide()
         self.client.close()
 
@@ -207,6 +515,31 @@ class DesktopApplication(QObject):
         checks["tray_visible"] = (
             self.tray.isVisible() if self.tray_available else False
         )
+        checks["tray_actions"] = self.tray.action_labels()
+        checks["tray_analyze_clipboard"] = (
+            "Analyze Clipboard" in checks["tray_actions"]
+        )
+        checks["tray_reconnect"] = (
+            "Reconnect Backend" in checks["tray_actions"]
+        )
+        checks["hotkey_checked"] = QGuiApplication.platformName() != "offscreen"
+        checks["hotkey_registered"] = self.hotkey.is_registered
+        checks["hotkey"] = self.hotkey.shortcut
+        checks["hotkey_error"] = self.hotkey.last_error
+        checks["startup_supported"] = self.startup_available
+        checks["startup_enabled"] = self.config.start_with_windows
+        checks["clipboard_available"] = QGuiApplication.clipboard() is not None
+        checks["screen_count"] = len(QGuiApplication.screens())
+        checks["screens"] = [
+            {
+                "name": screen.name(),
+                "geometry": screen.geometry().getRect(),
+                "available": screen.availableGeometry().getRect(),
+                "device_pixel_ratio": screen.devicePixelRatio(),
+                "logical_dpi": screen.logicalDotsPerInch(),
+            }
+            for screen in QGuiApplication.screens()
+        ]
         checks["always_on_top"] = bool(
             self.overlay.windowFlags() & Qt.WindowType.WindowStaysOnTopHint
         )
@@ -220,6 +553,11 @@ class DesktopApplication(QObject):
         self._show_overlay()
         QTest.qWait(150)
         checks["overlay_reopened"] = self.overlay.isVisible()
+        self.overlay.hide_overlay()
+        QTest.qWait(80)
+        self.hotkey.activated.emit()
+        QTest.qWait(120)
+        checks["hotkey_toggle_show"] = self.overlay.isVisible()
 
         self._show_main()
         QTest.qWait(200)
@@ -360,12 +698,20 @@ class DesktopApplication(QObject):
             "overlay_menu_open",
             "overlay_menu_closed",
             "overlay_menu_items",
+            "tray_actions",
+            "tray_analyze_clipboard",
+            "tray_reconnect",
+            "hotkey_toggle_show",
+            "startup_supported",
+            "clipboard_available",
             "always_on_top",
             "backend_health_ok",
             "analysis_completed",
             "analysis_displayed",
             "has_explanation",
         ]
+        if checks.get("hotkey_checked"):
+            required.append("hotkey_registered")
         checks["ok"] = all(bool(checks.get(name)) for name in required)
         checks["frozen"] = bool(getattr(sys, "frozen", False))
 
@@ -383,6 +729,11 @@ class DesktopApplication(QObject):
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="TextShield desktop shell")
     parser.add_argument("--backend-url", default=None)
+    parser.add_argument(
+        "--startup",
+        action="store_true",
+        help="Start minimized for the Windows startup entry",
+    )
     parser.add_argument("--smoke-test", action="store_true")
     parser.add_argument("--smoke-report", default=None)
     args, qt_args = parser.parse_known_args(argv)
